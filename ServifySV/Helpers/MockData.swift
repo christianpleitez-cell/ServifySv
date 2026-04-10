@@ -6,7 +6,7 @@ struct MockData {
     static let usuarioCliente = User(
         id: 1,
         nombre: "Carlos Martínez",
-        correo: "carlos@gmail.com",
+        correo: "carlos1@gmail.com",
         tipoUsuario: .cliente,
         fechaRegistro: Date(),
         fotoPerfil: nil
