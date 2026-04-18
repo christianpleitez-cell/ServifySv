@@ -6,47 +6,35 @@ class HistorialCell: UITableViewCell {
 
     private let cardView: UIView = {
         let v = UIView()
-        v.backgroundColor = .systemBackground
-        v.layer.cornerRadius = 14
+        v.backgroundColor = .white
+        v.layer.cornerRadius = 12
         v.layer.shadowColor = UIColor.black.cgColor
-        v.layer.shadowOpacity = 0.07
+        v.layer.shadowOpacity = 0.1
         v.layer.shadowOffset = CGSize(width: 0, height: 2)
         v.layer.shadowRadius = 6
         v.translatesAutoresizingMaskIntoConstraints = false
         return v
     }()
 
-    private let estadoBadge: UILabel = {
-        let l = UILabel()
-        l.font = UIFont.systemFont(ofSize: 11, weight: .bold)
-        l.textColor = .white
-        l.backgroundColor = .systemGreen
-        l.layer.cornerRadius = 8
-        l.clipsToBounds = true
-        l.textAlignment = .center
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
-
-    private let profesionalLabel: UILabel = {
+    private let tituloLabel: UILabel = {
         let l = UILabel()
         l.font = UIFont.boldSystemFont(ofSize: 16)
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
-    private let servicioLabel: UILabel = {
+    private let precioLabel: UILabel = {
         let l = UILabel()
-        l.font = UIFont.systemFont(ofSize: 13)
-        l.textColor = .secondaryLabel
+        l.font = UIFont.boldSystemFont(ofSize: 16)
+        l.textColor = .systemBlue
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
-    private let starsLabel: UILabel = {
+    private let profesionalLabel: UILabel = {
         let l = UILabel()
-        l.font = UIFont.systemFont(ofSize: 14)
-        l.textColor = .systemYellow
+        l.font = UIFont.systemFont(ofSize: 13)
+        l.textColor = .systemGray
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -54,8 +42,24 @@ class HistorialCell: UITableViewCell {
     private let fechaLabel: UILabel = {
         let l = UILabel()
         l.font = UIFont.systemFont(ofSize: 12)
-        l.textColor = .tertiaryLabel
-        l.textAlignment = .right
+        l.textColor = .systemGray
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
+    private let ratingLabel: UILabel = {
+        let l = UILabel()
+        l.font = UIFont.systemFont(ofSize: 13)
+        l.textColor = .systemYellow
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
+    private let comentarioLabel: UILabel = {
+        let l = UILabel()
+        l.font = UIFont.systemFont(ofSize: 12)
+        l.textColor = .systemBlue
+        l.numberOfLines = 2
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -64,51 +68,46 @@ class HistorialCell: UITableViewCell {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         backgroundColor = .clear
         selectionStyle = .none
-        [estadoBadge, profesionalLabel, servicioLabel, starsLabel, fechaLabel].forEach { cardView.addSubview($0) }
+
+        [tituloLabel, precioLabel, profesionalLabel, fechaLabel, ratingLabel, comentarioLabel].forEach { cardView.addSubview($0) }
         contentView.addSubview(cardView)
 
         NSLayoutConstraint.activate([
-            cardView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 6),
+            cardView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
             cardView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             cardView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -6),
+            cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
 
-            estadoBadge.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 14),
-            estadoBadge.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
-            estadoBadge.widthAnchor.constraint(equalToConstant: 100),
-            estadoBadge.heightAnchor.constraint(equalToConstant: 22),
+            tituloLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 12),
+            tituloLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
 
-            profesionalLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 16),
-            profesionalLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
-            profesionalLabel.trailingAnchor.constraint(equalTo: estadoBadge.leadingAnchor, constant: -8),
+            precioLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 12),
+            precioLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
 
-            servicioLabel.topAnchor.constraint(equalTo: profesionalLabel.bottomAnchor, constant: 4),
-            servicioLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            profesionalLabel.topAnchor.constraint(equalTo: tituloLabel.bottomAnchor, constant: 2),
+            profesionalLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
 
-            starsLabel.topAnchor.constraint(equalTo: servicioLabel.bottomAnchor, constant: 8),
-            starsLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            fechaLabel.topAnchor.constraint(equalTo: profesionalLabel.bottomAnchor, constant: 2),
+            fechaLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
 
-            fechaLabel.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -12),
-            fechaLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
+            ratingLabel.topAnchor.constraint(equalTo: profesionalLabel.topAnchor),
+            ratingLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
+
+            comentarioLabel.topAnchor.constraint(equalTo: fechaLabel.bottomAnchor, constant: 8),
+            comentarioLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
+            comentarioLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
+            comentarioLabel.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -12),
         ])
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func configure(with solicitud: Solicitud) {
-        profesionalLabel.text = solicitud.profesional.usuario.nombre
-        servicioLabel.text = solicitud.servicio.nombreServicio
-        estadoBadge.text = " \(solicitud.estado.rawValue) "
-
-        if let cal = solicitud.calificacion {
-            starsLabel.text = String(repeating: "★", count: cal.puntuacion) + String(repeating: "☆", count: 5 - cal.puntuacion)
-        } else {
-            starsLabel.text = "Sin calificación"
-            starsLabel.textColor = .tertiaryLabel
-        }
-
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        fechaLabel.text = formatter.string(from: solicitud.fechaSolicitud)
+    func configure(titulo: String, profesional: String, precio: String, fecha: String, rating: String, comentario: String) {
+        tituloLabel.text = titulo
+        precioLabel.text = precio
+        profesionalLabel.text = profesional
+        fechaLabel.text = fecha
+        ratingLabel.text = rating
+        comentarioLabel.text = ""\(comentario)""
     }
 }

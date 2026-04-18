@@ -172,6 +172,12 @@ struct MockData {
         Historial(id: 2, profesional: profesionales[1], solicitud: solicitudes[1], estadoFinal: "En progreso"),
     ]
 
+    // MARK: - Servicios del profesional actual
+    static let serviciosProfesional: [Servicio] = [
+        Servicio(id: 1, idProfesional: 1, nombreServicio: "Construcción y Remodelación", categoria: .albanileria, precioReferencia: 500.00, disponibilidad: "Lunes a Viernes"),
+        Servicio(id: 2, idProfesional: 1, nombreServicio: "Reparación de Estructuras", categoria: .albanileria, precioReferencia: 350.00, disponibilidad: "Lunes a Sábado"),
+    ]
+
     // MARK: - Usuario actual simulado
     static var usuarioActual: User = usuarioCliente
 }

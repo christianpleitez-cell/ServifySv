@@ -4,40 +4,52 @@ class ClienteProfileViewController: UIViewController {
 
     // MARK: - Properties
     private let usuario: User = MockData.usuarioActual
+    private var telefono: String = "+52 555 1234 5678"
+    private var ubicacion: String = "Ciudad de México, CDMX"
 
     // MARK: - UI Components
     private let scrollView = UIScrollView()
     private let contentView = UIView()
 
+    private let headerView: UIView = {
+        let v = UIView()
+        v.backgroundColor = .systemBlue
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+
     private let avatarView: UIView = {
         let v = UIView()
-        v.backgroundColor = .systemOrange.withAlphaComponent(0.15)
-        v.layer.cornerRadius = 50
+        v.backgroundColor = .white
+        v.layer.cornerRadius = 60
+        v.layer.borderWidth = 4
+        v.layer.borderColor = UIColor.white.cgColor
         v.translatesAutoresizingMaskIntoConstraints = false
         return v
     }()
 
     private let avatarLabel: UILabel = {
         let l = UILabel()
-        l.font = UIFont.boldSystemFont(ofSize: 36)
-        l.textColor = .systemOrange
+        l.font = UIFont.boldSystemFont(ofSize: 48)
+        l.textColor = .systemBlue
         l.textAlignment = .center
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
+    }()
+
+    private let cameraButton: UIButton = {
+        let btn = UIButton(type: .system)
+        btn.backgroundColor = .systemBlue
+        btn.setImage(UIImage(systemName: "camera.fill"), for: .normal)
+        btn.tintColor = .white
+        btn.layer.cornerRadius = 12
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        return btn
     }()
 
     private let nombreLabel: UILabel = {
         let l = UILabel()
-        l.font = UIFont.boldSystemFont(ofSize: 22)
-        l.textAlignment = .center
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
-
-    private let correoLabel: UILabel = {
-        let l = UILabel()
-        l.font = UIFont.systemFont(ofSize: 15)
-        l.textColor = .secondaryLabel
+        l.font = UIFont.boldSystemFont(ofSize: 20)
         l.textAlignment = .center
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
@@ -47,69 +59,59 @@ class ClienteProfileViewController: UIViewController {
         let l = UILabel()
         l.text = "Cliente"
         l.font = UIFont.systemFont(ofSize: 13, weight: .medium)
-        l.textColor = .white
-        l.backgroundColor = .systemOrange
-        l.layer.cornerRadius = 10
-        l.clipsToBounds = true
+        l.textColor = .systemBlue
         l.textAlignment = .center
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
-    private let statsContainer: UIView = {
-        let v = UIView()
-        v.backgroundColor = .systemGroupedBackground
-        v.layer.cornerRadius = 12
-        v.translatesAutoresizingMaskIntoConstraints = false
-        return v
-    }()
-
-    private let solicitudesCountLabel: UILabel = {
+    private let contactoTitleLabel: UILabel = {
         let l = UILabel()
-        l.text = "3"
-        l.font = UIFont.boldSystemFont(ofSize: 28)
-        l.textAlignment = .center
+        l.text = "Información de Contacto"
+        l.font = UIFont.boldSystemFont(ofSize: 16)
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
-    private let solicitudesTextLabel: UILabel = {
-        let l = UILabel()
-        l.text = "Solicitudes"
-        l.font = UIFont.systemFont(ofSize: 13)
-        l.textColor = .secondaryLabel
-        l.textAlignment = .center
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
+    private let contactoStackView: UIStackView = {
+        let sv = UIStackView()
+        sv.axis = .vertical
+        sv.spacing = 12
+        sv.translatesAutoresizingMaskIntoConstraints = false
+        return sv
     }()
 
-    private let completadasCountLabel: UILabel = {
-        let l = UILabel()
-        l.text = "1"
-        l.font = UIFont.boldSystemFont(ofSize: 28)
-        l.textAlignment = .center
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
+    private let editarButton: UIButton = {
+        let btn = UIButton(type: .system)
+        btn.setTitle("Editar Perfil", for: .normal)
+        btn.backgroundColor = .systemBlue
+        btn.setTitleColor(.white, for: .normal)
+        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
+        btn.layer.cornerRadius = 24
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        return btn
     }()
 
-    private let completadasTextLabel: UILabel = {
-        let l = UILabel()
-        l.text = "Completadas"
-        l.font = UIFont.systemFont(ofSize: 13)
-        l.textColor = .secondaryLabel
-        l.textAlignment = .center
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
+    private let configuracionButton: UIButton = {
+        let btn = UIButton(type: .system)
+        var config = UIButton.Configuration.plain()
+        config.imagePadding = 12
+        config.image = UIImage(systemName: "gearshape")
+        btn.setAttributedTitle(NSAttributedString(string: "Configuración", attributes: [.font: UIFont.systemFont(ofSize: 16), .foregroundColor: UIColor.label]), for: .normal)
+        btn.configuration = config
+        btn.contentHorizontalAlignment = .left
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        return btn
     }()
 
     private let logoutButton: UIButton = {
         let btn = UIButton(type: .system)
-        btn.setTitle("Cerrar Sesión", for: .normal)
-        btn.setTitleColor(.systemRed, for: .normal)
-        btn.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-        btn.layer.borderColor = UIColor.systemRed.cgColor
-        btn.layer.borderWidth = 1.5
-        btn.layer.cornerRadius = 10
+        var config = UIButton.Configuration.plain()
+        config.imagePadding = 12
+        config.image = UIImage(systemName: "power")
+        btn.setAttributedTitle(NSAttributedString(string: "Cerrar Sesión", attributes: [.font: UIFont.systemFont(ofSize: 16), .foregroundColor: UIColor.systemRed]), for: .normal)
+        btn.configuration = config
+        btn.contentHorizontalAlignment = .left
         btn.translatesAutoresizingMaskIntoConstraints = false
         return btn
     }()
@@ -121,34 +123,46 @@ class ClienteProfileViewController: UIViewController {
         configure()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.isNavigationBarHidden = true
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.isNavigationBarHidden = false
+    }
+
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .systemBackground
-        title = "Mi Perfil"
-        navigationController?.navigationBar.prefersLargeTitles = true
+        view.backgroundColor = UIColor(white: 0.97, alpha: 1)
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         contentView.translatesAutoresizingMaskIntoConstraints = false
+
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
 
+        headerView.addSubview(avatarView)
         avatarView.addSubview(avatarLabel)
+        view.addSubview(cameraButton)
 
-        let statsStack = UIStackView(arrangedSubviews: [
-            makeStatColumn(count: solicitudesCountLabel, text: solicitudesTextLabel),
-            makeDivider(),
-            makeStatColumn(count: completadasCountLabel, text: completadasTextLabel)
-        ])
-        statsStack.axis = .horizontal
-        statsStack.distribution = .fillEqually
-        statsStack.translatesAutoresizingMaskIntoConstraints = false
-        statsContainer.addSubview(statsStack)
+        contentView.addSubview(nombreLabel)
+        contentView.addSubview(tipoLabel)
+        contentView.addSubview(contactoTitleLabel)
+        contentView.addSubview(contactoStackView)
+        contentView.addSubview(editarButton)
+        contentView.addSubview(configuracionButton)
+        contentView.addSubview(logoutButton)
 
-        [avatarView, nombreLabel, correoLabel, tipoLabel, statsContainer, logoutButton].forEach {
-            contentView.addSubview($0)
-        }
+        view.insertSubview(headerView, belowSubview: scrollView)
 
         NSLayoutConstraint.activate([
+            headerView.topAnchor.constraint(equalTo: view.topAnchor),
+            headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            headerView.heightAnchor.constraint(equalToConstant: 180),
+
             scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -160,44 +174,49 @@ class ClienteProfileViewController: UIViewController {
             contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
 
-            avatarView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 30),
-            avatarView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            avatarView.widthAnchor.constraint(equalToConstant: 100),
-            avatarView.heightAnchor.constraint(equalToConstant: 100),
+            avatarView.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 30),
+            avatarView.centerXAnchor.constraint(equalTo: headerView.centerXAnchor),
+            avatarView.widthAnchor.constraint(equalToConstant: 120),
+            avatarView.heightAnchor.constraint(equalToConstant: 120),
 
             avatarLabel.centerXAnchor.constraint(equalTo: avatarView.centerXAnchor),
             avatarLabel.centerYAnchor.constraint(equalTo: avatarView.centerYAnchor),
 
-            nombreLabel.topAnchor.constraint(equalTo: avatarView.bottomAnchor, constant: 16),
+            cameraButton.trailingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 4),
+            cameraButton.bottomAnchor.constraint(equalTo: avatarView.bottomAnchor, constant: 4),
+            cameraButton.widthAnchor.constraint(equalToConstant: 28),
+            cameraButton.heightAnchor.constraint(equalToConstant: 28),
+
+            nombreLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
             nombreLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             nombreLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
 
-            correoLabel.topAnchor.constraint(equalTo: nombreLabel.bottomAnchor, constant: 4),
-            correoLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            correoLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-
-            tipoLabel.topAnchor.constraint(equalTo: correoLabel.bottomAnchor, constant: 8),
+            tipoLabel.topAnchor.constraint(equalTo: nombreLabel.bottomAnchor, constant: 4),
             tipoLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            tipoLabel.widthAnchor.constraint(equalToConstant: 80),
-            tipoLabel.heightAnchor.constraint(equalToConstant: 24),
 
-            statsContainer.topAnchor.constraint(equalTo: tipoLabel.bottomAnchor, constant: 28),
-            statsContainer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            statsContainer.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            statsContainer.heightAnchor.constraint(equalToConstant: 90),
+            contactoTitleLabel.topAnchor.constraint(equalTo: tipoLabel.bottomAnchor, constant: 20),
+            contactoTitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
 
-            statsStack.topAnchor.constraint(equalTo: statsContainer.topAnchor),
-            statsStack.leadingAnchor.constraint(equalTo: statsContainer.leadingAnchor),
-            statsStack.trailingAnchor.constraint(equalTo: statsContainer.trailingAnchor),
-            statsStack.bottomAnchor.constraint(equalTo: statsContainer.bottomAnchor),
+            contactoStackView.topAnchor.constraint(equalTo: contactoTitleLabel.bottomAnchor, constant: 12),
+            contactoStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            contactoStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
 
-            logoutButton.topAnchor.constraint(equalTo: statsContainer.bottomAnchor, constant: 40),
-            logoutButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            logoutButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            logoutButton.heightAnchor.constraint(equalToConstant: 48),
-            logoutButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -40),
+            editarButton.topAnchor.constraint(equalTo: contactoStackView.bottomAnchor, constant: 20),
+            editarButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            editarButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            editarButton.heightAnchor.constraint(equalToConstant: 50),
+
+            configuracionButton.topAnchor.constraint(equalTo: editarButton.bottomAnchor, constant: 12),
+            configuracionButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            configuracionButton.heightAnchor.constraint(equalToConstant: 44),
+
+            logoutButton.topAnchor.constraint(equalTo: configuracionButton.bottomAnchor, constant: 4),
+            logoutButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            logoutButton.heightAnchor.constraint(equalToConstant: 44),
+            logoutButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
         ])
 
+        editarButton.addTarget(self, action: #selector(editarTapped), for: .touchUpInside)
         logoutButton.addTarget(self, action: #selector(logoutTapped), for: .touchUpInside)
     }
 
@@ -205,30 +224,77 @@ class ClienteProfileViewController: UIViewController {
         let initials = usuario.nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
         avatarLabel.text = String(initials.prefix(2))
         nombreLabel.text = usuario.nombre
-        correoLabel.text = usuario.correo
+
+        addContactoItems()
     }
 
-    private func makeStatColumn(count: UILabel, text: UILabel) -> UIView {
-        let stack = UIStackView(arrangedSubviews: [count, text])
-        stack.axis = .vertical
-        stack.alignment = .center
-        stack.spacing = 4
-        return stack
-    }
+    private func addContactoItems() {
+        let items = [
+            ("📞", telefono),
+            ("📧", usuario.correo),
+            ("📍", ubicacion)
+        ]
 
-    private func makeDivider() -> UIView {
-        let v = UIView()
-        v.backgroundColor = .separator
-        v.translatesAutoresizingMaskIntoConstraints = false
-        v.widthAnchor.constraint(equalToConstant: 1).isActive = true
-        return v
+        for (icon, text) in items {
+            let label = UILabel()
+            label.font = UIFont.systemFont(ofSize: 14)
+            label.textColor = .label
+            let attributedString = NSMutableAttributedString()
+            attributedString.append(NSAttributedString(string: icon + " "))
+            attributedString.append(NSAttributedString(string: text, attributes: [.foregroundColor: UIColor.systemGray2]))
+            label.attributedText = attributedString
+            contactoStackView.addArrangedSubview(label)
+        }
     }
 
     // MARK: - Actions
+    @objc private func editarTapped() {
+        presentEditModal()
+    }
+
     @objc private func logoutTapped() {
         navigationController?.popToRootViewController(animated: false)
         let loginVC = UINavigationController(rootViewController: LoginViewController())
         loginVC.modalPresentationStyle = .fullScreen
         present(loginVC, animated: true)
+    }
+
+    private func presentEditModal() {
+        let alert = UIAlertController(title: "Editar Perfil", message: nil, preferredStyle: .alert)
+        alert.view.tintColor = .systemBlue
+
+        let nombreField = UITextField()
+        nombreField.placeholder = "Nombre"
+        nombreField.text = usuario.nombre
+        nombreField.borderStyle = .roundedRect
+        alert.addTextField { _ in }
+        alert.textFields?[0] = nombreField
+
+        let telefonoField = UITextField()
+        telefonoField.placeholder = "Teléfono"
+        telefonoField.text = telefono
+        telefonoField.borderStyle = .roundedRect
+        alert.addTextField { _ in }
+        alert.textFields?[1] = telefonoField
+
+        let emailField = UITextField()
+        emailField.placeholder = "Email"
+        emailField.text = usuario.correo
+        emailField.borderStyle = .roundedRect
+        alert.addTextField { _ in }
+        alert.textFields?[2] = emailField
+
+        alert.addAction(UIAlertAction(title: "Guardar Cambios", style: .default) { _ in
+            if let nombre = nombreField.text, !nombre.isEmpty {
+                // Actualizar datos (en un escenario real, se guardaría en el backend)
+            }
+            if let tel = telefonoField.text {
+                self.telefono = tel
+            }
+        })
+
+        alert.addAction(UIAlertAction(title: "Cancelar", style: .cancel))
+
+        present(alert, animated: true)
     }
 }

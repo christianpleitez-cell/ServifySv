@@ -47,25 +47,68 @@ class HomeViewController: UIViewController {
 
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .systemBackground
-        title = "ServifySV"
-        navigationController?.navigationBar.prefersLargeTitles = true
+        view.backgroundColor = UIColor(white: 0.97, alpha: 1)
+        navigationController?.isNavigationBarHidden = true
+
+        let headerView = UIView()
+        headerView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(headerView)
+
+        let holaLabel = UILabel()
+        holaLabel.text = "Hola, Carlos"
+        holaLabel.font = UIFont.boldSystemFont(ofSize: 24)
+        holaLabel.textColor = .black
+        holaLabel.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(holaLabel)
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = "Encuentra tu profesional"
+        subtitleLabel.font = UIFont.systemFont(ofSize: 13)
+        subtitleLabel.textColor = .systemGray
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(subtitleLabel)
+
+        let avatarButton = UIButton(type: .system)
+        avatarButton.backgroundColor = .systemBlue
+        avatarButton.setTitle("C", for: .normal)
+        avatarButton.setTitleColor(.white, for: .normal)
+        avatarButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
+        avatarButton.layer.cornerRadius = 20
+        avatarButton.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(avatarButton)
+
+        NSLayoutConstraint.activate([
+            holaLabel.topAnchor.constraint(equalTo: headerView.topAnchor),
+            holaLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+
+            subtitleLabel.topAnchor.constraint(equalTo: holaLabel.bottomAnchor, constant: 4),
+            subtitleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+
+            avatarButton.centerYAnchor.constraint(equalTo: holaLabel.centerYAnchor),
+            avatarButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            avatarButton.widthAnchor.constraint(equalToConstant: 40),
+            avatarButton.heightAnchor.constraint(equalToConstant: 40),
+        ])
 
         view.addSubview(searchBar)
         view.addSubview(categoryCollectionView)
         view.addSubview(tableView)
 
         NSLayoutConstraint.activate([
-            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
 
-            categoryCollectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 4),
+            searchBar.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 16),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+
+            categoryCollectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 12),
             categoryCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             categoryCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             categoryCollectionView.heightAnchor.constraint(equalToConstant: 50),
 
-            tableView.topAnchor.constraint(equalTo: categoryCollectionView.bottomAnchor, constant: 8),
+            tableView.topAnchor.constraint(equalTo: categoryCollectionView.bottomAnchor, constant: 12),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -99,7 +142,7 @@ extension HomeViewController: UITableViewDataSource, UITableViewDelegate {
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        130
+        280
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
