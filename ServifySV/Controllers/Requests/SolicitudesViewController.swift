@@ -5,7 +5,6 @@ class SolicitudesViewController: UIViewController {
     // MARK: - Properties
     private var solicitudes: [Solicitud] = MockData.solicitudes
     private var filteredSolicitudes: [Solicitud] = []
-    private var selectedFilter: EstadoSolicitud? = nil
 
     // MARK: - UI Components
     private let filterSegment: UISegmentedControl = {
@@ -43,7 +42,7 @@ class SolicitudesViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        applyFilter()
+        loadSolicitudes()
     }
 
     // MARK: - Setup
@@ -79,13 +78,47 @@ class SolicitudesViewController: UIViewController {
 
     private func applyFilter() {
         switch filterSegment.selectedSegmentIndex {
-        case 1: filteredSolicitudes = solicitudes.filter { $0.estado == .pendiente }
-        case 2: filteredSolicitudes = solicitudes.filter { $0.estado == .aceptada || $0.estado == .enProgreso }
-        case 3: filteredSolicitudes = solicitudes.filter { $0.estado == .completada }
+        case 1: filteredSolicitudes = solicitudes.filter { $0.estado == "pendiente" }
+        case 2: filteredSolicitudes = solicitudes.filter { $0.estado == "aceptada" }
+        case 3: filteredSolicitudes = solicitudes.filter { $0.estado == "completada" }
         default: filteredSolicitudes = solicitudes
         }
         emptyLabel.isHidden = !filteredSolicitudes.isEmpty
         tableView.reloadData()
+    }
+
+    private func loadSolicitudes() {
+        guard let userId = AuthManager.shared.currentUser?.id else { return }
+
+        let isProfessional = AuthManager.shared.isProfessional
+
+        if isProfessional {
+            APIManager.shared.getSolicitudesProfesional(profesionalId: userId) { [weak self] result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let response):
+                        self?.solicitudes = response.solicitudes
+                        self?.applyFilter()
+                    case .failure:
+                        self?.solicitudes = []
+                        self?.applyFilter()
+                    }
+                }
+            }
+        } else {
+            APIManager.shared.getSolicitudesCliente(clienteId: userId) { [weak self] result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let response):
+                        self?.solicitudes = response.solicitudes
+                        self?.applyFilter()
+                    case .failure:
+                        self?.solicitudes = []
+                        self?.applyFilter()
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Actions

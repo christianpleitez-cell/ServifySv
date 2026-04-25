@@ -2,16 +2,13 @@ import UIKit
 
 class ProfesionalProfileViewController: UIViewController {
 
-    private var profesional = (
-        nombre: "Juan Pérez",
-        telefono: "+52 555 1234 5678",
-        email: "Nel500@gmail.com",
-        ubicacion: "Ciudad de México, CDMX",
-        biografia: "Profesional con más de 10 años de experiencia en construcción y remodelación. Especializado en trabajos de albañilería, acabados y proyectos completos de remodelación residencial y comercial.",
-        trabajos: 127,
-        ingresos: "$45.680",
-        rating: 4.8
-    )
+    private var profesional: Profesional?
+    private var estadisticas: (trabajos: Int, ingresos: Double, rating: Double) = (0, 0, 0)
+    private var editarButton: UIButton!
+    private var nombreLabel: UILabel!
+    private var ratingLabel: UILabel!
+    private var statsStack: UIStackView!
+    private var contentStackLabels: [UILabel] = []
 
     private let headerView: UIView = {
         let v = UIView()
@@ -61,11 +58,70 @@ class ProfesionalProfileViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = true
+        loadProfesionalData()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         navigationController?.isNavigationBarHidden = false
+    }
+
+    private func loadProfesionalData() {
+        guard let currentUser = AuthManager.shared.currentUser else { return }
+
+        APIManager.shared.getProfesionalById(id: currentUser.id) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    self?.profesional = Profesional(
+                        id: response.id,
+                        usuario: response.usuario,
+                        especialidad: response.especialidad,
+                        descripcion: response.descripcion,
+                        experiencia: response.experiencia,
+                        estadoVerificacion: response.estadoVerificacion,
+                        calificacionPromedio: response.calificacionPromedio,
+                        totalCalificaciones: response.totalCalificaciones,
+                        biografia: nil,
+                        servicios: response.servicios
+                    )
+                    self?.updateUI()
+
+                case .failure:
+                    self?.profesional = nil
+                }
+            }
+        }
+    }
+
+    private func updateUI() {
+        guard let profesional = profesional else { return }
+
+        let nombre = profesional.usuario?.nombre ?? ""
+        let initials = nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
+        avatarLabel.text = String(initials.prefix(2))
+        nombreLabel?.text = nombre
+        let rating = profesional.calificacionPromedio ?? 0.0
+        let trabajos = profesional.totalCalificaciones ?? 0
+        ratingLabel?.text = "⭐ \(String(format: "%.1f", rating)) · \(trabajos) trabajos"
+
+        let ubicacion = profesional.usuario?.ubicacion ?? "No especificada"
+        let telefono = profesional.usuario?.telefono ?? "No especificado"
+
+        for label in contentStackLabels {
+            switch label.tag {
+            case 1001:
+                label.text = "📞 \(telefono)"
+            case 1002:
+                label.text = "📧 \(profesional.usuario?.correo ?? "")"
+            case 1003:
+                label.text = "📍 \(ubicacion)"
+            case 1004:
+                label.text = profesional.biografia
+            default:
+                break
+            }
+        }
     }
 
     private func setupUI() {
@@ -117,8 +173,8 @@ class ProfesionalProfileViewController: UIViewController {
     }
 
     private func setupContent() {
-        let nombreLabel = UILabel()
-        nombreLabel.text = profesional.nombre
+        nombreLabel = UILabel()
+        nombreLabel.text = "Cargando..."
         nombreLabel.font = UIFont.boldSystemFont(ofSize: 20)
         nombreLabel.textAlignment = .center
         nombreLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -132,8 +188,8 @@ class ProfesionalProfileViewController: UIViewController {
         tipoLabel.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(tipoLabel)
 
-        let ratingLabel = UILabel()
-        ratingLabel.text = "⭐ \(profesional.rating) · \(profesional.trabajos) trabajos"
+        ratingLabel = UILabel()
+        ratingLabel.text = "⭐ 0.0 · 0 trabajos"
         ratingLabel.font = UIFont.systemFont(ofSize: 13)
         ratingLabel.textColor = .systemGray
         ratingLabel.textAlignment = .center
@@ -141,15 +197,15 @@ class ProfesionalProfileViewController: UIViewController {
         contentView.addSubview(ratingLabel)
 
         // Cards de estadísticas
-        let statsStack = UIStackView()
+        statsStack = UIStackView()
         statsStack.axis = .horizontal
         statsStack.spacing = 16
         statsStack.distribution = .fillEqually
         statsStack.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(statsStack)
 
-        let trabajosCard = createStatCard(icon: "👔", title: "Trabajos", value: "\(profesional.trabajos)")
-        let ingresosCard = createStatCard(icon: "$", title: "Ingresos", value: profesional.ingresos)
+        let trabajosCard = createStatCard(icon: "👔", title: "Trabajos", value: "0")
+        let ingresosCard = createStatCard(icon: "$", title: "Ingresos", value: "$0.00")
 
         statsStack.addArrangedSubview(trabajosCard)
         statsStack.addArrangedSubview(ingresosCard)
@@ -162,22 +218,28 @@ class ProfesionalProfileViewController: UIViewController {
         contentView.addSubview(contactoTitle)
 
         let telefonoLabel = UILabel()
-        telefonoLabel.text = "📞 \(profesional.telefono)"
+        telefonoLabel.text = "📞 Cargando..."
         telefonoLabel.font = UIFont.systemFont(ofSize: 13)
         telefonoLabel.translatesAutoresizingMaskIntoConstraints = false
+        telefonoLabel.tag = 1001
         contentView.addSubview(telefonoLabel)
+        contentStackLabels.append(telefonoLabel)
 
         let emailLabel = UILabel()
-        emailLabel.text = "📧 \(profesional.email)"
+        emailLabel.text = "📧 Cargando..."
         emailLabel.font = UIFont.systemFont(ofSize: 13)
         emailLabel.translatesAutoresizingMaskIntoConstraints = false
+        emailLabel.tag = 1002
         contentView.addSubview(emailLabel)
+        contentStackLabels.append(emailLabel)
 
         let ubicacionLabel = UILabel()
-        ubicacionLabel.text = "📍 \(profesional.ubicacion)"
+        ubicacionLabel.text = "📍 Cargando..."
         ubicacionLabel.font = UIFont.systemFont(ofSize: 13)
         ubicacionLabel.translatesAutoresizingMaskIntoConstraints = false
+        ubicacionLabel.tag = 1003
         contentView.addSubview(ubicacionLabel)
+        contentStackLabels.append(ubicacionLabel)
 
         // Acerca de mí
         let acercaTitle = UILabel()
@@ -187,15 +249,17 @@ class ProfesionalProfileViewController: UIViewController {
         contentView.addSubview(acercaTitle)
 
         let acercaLabel = UILabel()
-        acercaLabel.text = profesional.biografia
+        acercaLabel.text = "Cargando..."
         acercaLabel.font = UIFont.systemFont(ofSize: 13)
         acercaLabel.textColor = .label
         acercaLabel.numberOfLines = 0
         acercaLabel.translatesAutoresizingMaskIntoConstraints = false
+        acercaLabel.tag = 1004
         contentView.addSubview(acercaLabel)
+        contentStackLabels.append(acercaLabel)
 
         // Botón Editar
-        let editarButton = UIButton(type: .system)
+        editarButton = UIButton(type: .system)
         editarButton.setTitle("Editar Perfil", for: .normal)
         editarButton.backgroundColor = .systemBlue
         editarButton.setTitleColor(.white, for: .normal)
@@ -329,6 +393,7 @@ class ProfesionalProfileViewController: UIViewController {
     }
 
     @objc private func logoutTapped() {
+        AuthManager.shared.clearSession()
         navigationController?.popToRootViewController(animated: false)
         let loginVC = UINavigationController(rootViewController: LoginViewController())
         loginVC.modalPresentationStyle = .fullScreen
@@ -336,45 +401,74 @@ class ProfesionalProfileViewController: UIViewController {
     }
 
     private func presentEditModal() {
+        guard let profesional = profesional, let currentUser = AuthManager.shared.currentUser else { return }
+
         let alert = UIAlertController(title: "Editar Perfil", message: nil, preferredStyle: .alert)
         alert.view.tintColor = .systemBlue
 
-        let nombreField = UITextField()
-        nombreField.placeholder = "Nombre"
-        nombreField.text = profesional.nombre
-        nombreField.borderStyle = .roundedRect
-        alert.addTextField { _ in }
-        alert.textFields?[0] = nombreField
+        alert.addTextField { field in
+            field.placeholder = "Nombre"
+            field.text = currentUser.nombre
+        }
 
-        let telefonoField = UITextField()
-        telefonoField.placeholder = "Teléfono"
-        telefonoField.text = profesional.telefono
-        telefonoField.borderStyle = .roundedRect
-        alert.addTextField { _ in }
-        alert.textFields?[1] = telefonoField
+        alert.addTextField { field in
+            field.placeholder = "Teléfono"
+            field.text = ""
+        }
 
-        let emailField = UITextField()
-        emailField.placeholder = "Email"
-        emailField.text = profesional.email
-        emailField.borderStyle = .roundedRect
-        alert.addTextField { _ in }
-        alert.textFields?[2] = emailField
+        alert.addTextField { field in
+            field.placeholder = "Especialidad"
+            field.text = profesional.especialidad
+        }
 
-        let biografiaField = UITextField()
-        biografiaField.placeholder = "Biografía"
-        biografiaField.text = profesional.biografia
-        biografiaField.borderStyle = .roundedRect
-        alert.addTextField { _ in }
-        alert.textFields?[3] = biografiaField
+        alert.addTextField { field in
+            field.placeholder = "Biografía"
+            field.text = profesional.biografia
+        }
 
-        alert.addAction(UIAlertAction(title: "Guardar Cambios", style: .default) { _ in
-            if let nombre = nombreField.text {
-                self.profesional.nombre = nombre
+        alert.addAction(UIAlertAction(title: "Guardar Cambios", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            guard let nombre = alert.textFields?[0].text, !nombre.isEmpty else {
+                self.showAlert(title: "Error", message: "El nombre no puede estar vacío")
+                return
+            }
+
+            let telefono = alert.textFields?[1].text ?? ""
+            let especialidad = alert.textFields?[2].text ?? ""
+            let biografia = alert.textFields?[3].text ?? ""
+
+            self.editarButton.isEnabled = false
+            let originalTitle = self.editarButton.title(for: .normal)
+            self.editarButton.setTitle("Guardando...", for: .normal)
+
+            APIManager.shared.updatePerfil(userId: currentUser.id, nombre: nombre, telefono: telefono.isEmpty ? nil : telefono, correo: nil) { _ in }
+
+            APIManager.shared.updateProfesionalPerfil(profesionalId: profesional.id, especialidad: especialidad.isEmpty ? nil : especialidad, descripcion: nil, experiencia: nil, biografia: biografia.isEmpty ? nil : biografia) { [weak self] result in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    self.editarButton.isEnabled = true
+                    self.editarButton.setTitle(originalTitle, for: .normal)
+
+                    switch result {
+                    case .success:
+                        self.showAlert(title: "Éxito", message: "Perfil actualizado correctamente")
+                        self.loadProfesionalData()
+
+                    case .failure(let error):
+                        self.showAlert(title: "Error", message: error.localizedDescription)
+                    }
+                }
             }
         })
 
         alert.addAction(UIAlertAction(title: "Cancelar", style: .cancel))
 
+        present(alert, animated: true)
+    }
+
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
 }

@@ -9,10 +9,15 @@ class PublicarViewController: UIViewController {
     private let fotoUploadView = UIView()
     private let fotoLabel = UILabel()
 
-    private let tituloField = createTextField(placeholder: "Ej: Construcción y Remodelación", label: "Título del servicio")
-    private let categoriaField = createDropdown(label: "Categoría", placeholder: "Selecciona una categoría")
-    private let descripcionField = createTextView(placeholder: "Describe tu experiencia, especialidades y qué servicios ofreces...", label: "Descripción")
-    private let precioField = createTextField(placeholder: "500", label: "Precio por día", keyboardType: .decimalPad)
+    private var tituloTextField: UITextField!
+    private var categoriaTextField: UITextField!
+    private var descripcionTextView: UITextView!
+    private var precioTextField: UITextField!
+
+    private lazy var tituloField = createTextField(textField: &tituloTextField, placeholder: "Ej: Construcción y Remodelación", label: "Título del servicio")
+    private lazy var categoriaField = createDropdown(textField: &categoriaTextField, label: "Categoría", placeholder: "Selecciona una categoría")
+    private lazy var descripcionField = createTextView(textView: &descripcionTextView, placeholder: "Describe tu experiencia, especialidades y qué servicios ofreces...", label: "Descripción")
+    private lazy var precioField = createTextField(textField: &precioTextField, placeholder: "500", label: "Precio por día", keyboardType: .decimalPad)
     private let precioHelpLabel = UILabel()
 
     private let publicarButton: UIButton = {
@@ -134,7 +139,6 @@ class PublicarViewController: UIViewController {
         fotoUploadView.layer.cornerRadius = 8
         fotoUploadView.layer.borderColor = UIColor.systemGray3.cgColor
         fotoUploadView.layer.borderWidth = 1
-        fotoUploadView.layer.borderStyle = .dashed
         fotoUploadView.translatesAutoresizingMaskIntoConstraints = false
 
         let fotoLabelTitle = UILabel()
@@ -183,13 +187,66 @@ class PublicarViewController: UIViewController {
     }
 
     @objc private func publicarTapped() {
-        let alert = UIAlertController(title: "Servicio Publicado", message: "Tu servicio ha sido publicado exitosamente", preferredStyle: .alert)
+        guard let titulo = tituloTextField.text, !titulo.isEmpty else {
+            showAlert(title: "Error", message: "Por favor ingresa un título para el servicio")
+            return
+        }
+
+        guard let categoria = categoriaTextField.text, !categoria.isEmpty else {
+            showAlert(title: "Error", message: "Por favor selecciona una categoría")
+            return
+        }
+
+        guard let descripcion = descripcionTextView.text, !descripcion.isEmpty, descripcion != "Describe tu experiencia, especialidades y qué servicios ofreces..." else {
+            showAlert(title: "Error", message: "Por favor ingresa una descripción")
+            return
+        }
+
+        guard let precioStr = precioTextField.text, !precioStr.isEmpty, let precio = Double(precioStr) else {
+            showAlert(title: "Error", message: "Por favor ingresa un precio válido")
+            return
+        }
+
+        guard let profesionalId = AuthManager.shared.currentUser?.id else { return }
+
+        publicarButton.isEnabled = false
+        let originalTitle = publicarButton.title(for: .normal)
+        publicarButton.setTitle("Publicando...", for: .normal)
+
+        APIManager.shared.createServicio(
+            idProfesional: profesionalId,
+            nombreServicio: titulo,
+            categoria: categoria.lowercased(),
+            descripcion: descripcion,
+            precioReferencia: precio,
+            disponibilidad: true
+        ) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.publicarButton.isEnabled = true
+                self?.publicarButton.setTitle(originalTitle, for: .normal)
+
+                switch result {
+                case .success:
+                    self?.showAlert(title: "Éxito", message: "Tu servicio ha sido publicado exitosamente")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        self?.navigationController?.popViewController(animated: true)
+                    }
+
+                case .failure(let error):
+                    self?.showAlert(title: "Error", message: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
 }
 
-private func createTextField(placeholder: String, label: String, keyboardType: UIKeyboardType = .default) -> UIView {
+private func createTextField(textField: inout UITextField?, placeholder: String, label: String, keyboardType: UIKeyboardType = .default) -> UIView {
     let container = UIView()
     container.translatesAutoresizingMaskIntoConstraints = false
 
@@ -199,36 +256,38 @@ private func createTextField(placeholder: String, label: String, keyboardType: U
     labelView.textColor = .black
     labelView.translatesAutoresizingMaskIntoConstraints = false
 
-    let textField = UITextField()
-    textField.placeholder = placeholder
-    textField.borderStyle = .none
-    textField.keyboardType = keyboardType
-    textField.backgroundColor = UIColor(white: 0.95, alpha: 1)
-    textField.layer.cornerRadius = 8
-    textField.translatesAutoresizingMaskIntoConstraints = false
+    let tf = UITextField()
+    tf.placeholder = placeholder
+    tf.borderStyle = .none
+    tf.keyboardType = keyboardType
+    tf.backgroundColor = UIColor(white: 0.95, alpha: 1)
+    tf.layer.cornerRadius = 8
+    tf.translatesAutoresizingMaskIntoConstraints = false
 
     let paddingView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 0))
-    textField.leftView = paddingView
-    textField.leftViewMode = .always
+    tf.leftView = paddingView
+    tf.leftViewMode = .always
+
+    textField = tf
 
     container.addSubview(labelView)
-    container.addSubview(textField)
+    container.addSubview(tf)
 
     NSLayoutConstraint.activate([
         labelView.topAnchor.constraint(equalTo: container.topAnchor),
         labelView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
 
-        textField.topAnchor.constraint(equalTo: labelView.bottomAnchor, constant: 6),
-        textField.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-        textField.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-        textField.heightAnchor.constraint(equalToConstant: 44),
-        textField.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        tf.topAnchor.constraint(equalTo: labelView.bottomAnchor, constant: 6),
+        tf.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+        tf.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+        tf.heightAnchor.constraint(equalToConstant: 44),
+        tf.bottomAnchor.constraint(equalTo: container.bottomAnchor)
     ])
 
     return container
 }
 
-private func createDropdown(label: String, placeholder: String) -> UIView {
+private func createDropdown(textField: inout UITextField?, label: String, placeholder: String) -> UIView {
     let container = UIView()
     container.translatesAutoresizingMaskIntoConstraints = false
 
@@ -238,41 +297,43 @@ private func createDropdown(label: String, placeholder: String) -> UIView {
     labelView.textColor = .black
     labelView.translatesAutoresizingMaskIntoConstraints = false
 
-    let textField = UITextField()
-    textField.placeholder = placeholder
-    textField.borderStyle = .none
-    textField.backgroundColor = UIColor(white: 0.95, alpha: 1)
-    textField.layer.cornerRadius = 8
-    textField.translatesAutoresizingMaskIntoConstraints = false
+    let tf = UITextField()
+    tf.placeholder = placeholder
+    tf.borderStyle = .none
+    tf.backgroundColor = UIColor(white: 0.95, alpha: 1)
+    tf.layer.cornerRadius = 8
+    tf.translatesAutoresizingMaskIntoConstraints = false
 
     let paddingView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 0))
-    textField.leftView = paddingView
-    textField.leftViewMode = .always
+    tf.leftView = paddingView
+    tf.leftViewMode = .always
 
     let dropdownImage = UIImageView(image: UIImage(systemName: "chevron.down"))
     dropdownImage.tintColor = .systemGray
     dropdownImage.translatesAutoresizingMaskIntoConstraints = false
-    textField.rightView = dropdownImage
-    textField.rightViewMode = .always
+    tf.rightView = dropdownImage
+    tf.rightViewMode = .always
+
+    textField = tf
 
     container.addSubview(labelView)
-    container.addSubview(textField)
+    container.addSubview(tf)
 
     NSLayoutConstraint.activate([
         labelView.topAnchor.constraint(equalTo: container.topAnchor),
         labelView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
 
-        textField.topAnchor.constraint(equalTo: labelView.bottomAnchor, constant: 6),
-        textField.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-        textField.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-        textField.heightAnchor.constraint(equalToConstant: 44),
-        textField.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        tf.topAnchor.constraint(equalTo: labelView.bottomAnchor, constant: 6),
+        tf.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+        tf.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+        tf.heightAnchor.constraint(equalToConstant: 44),
+        tf.bottomAnchor.constraint(equalTo: container.bottomAnchor)
     ])
 
     return container
 }
 
-private func createTextView(placeholder: String, label: String) -> UIView {
+private func createTextView(textView: inout UITextView?, placeholder: String, label: String) -> UIView {
     let container = UIView()
     container.translatesAutoresizingMaskIntoConstraints = false
 
@@ -282,26 +343,28 @@ private func createTextView(placeholder: String, label: String) -> UIView {
     labelView.textColor = .black
     labelView.translatesAutoresizingMaskIntoConstraints = false
 
-    let textView = UITextView()
-    textView.text = placeholder
-    textView.textColor = .systemGray
-    textView.backgroundColor = UIColor(white: 0.95, alpha: 1)
-    textView.layer.cornerRadius = 8
-    textView.font = UIFont.systemFont(ofSize: 14)
-    textView.textContainerInset = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
-    textView.translatesAutoresizingMaskIntoConstraints = false
+    let tv = UITextView()
+    tv.text = placeholder
+    tv.textColor = .systemGray
+    tv.backgroundColor = UIColor(white: 0.95, alpha: 1)
+    tv.layer.cornerRadius = 8
+    tv.font = UIFont.systemFont(ofSize: 14)
+    tv.textContainerInset = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+    tv.translatesAutoresizingMaskIntoConstraints = false
+
+    textView = tv
 
     container.addSubview(labelView)
-    container.addSubview(textView)
+    container.addSubview(tv)
 
     NSLayoutConstraint.activate([
         labelView.topAnchor.constraint(equalTo: container.topAnchor),
         labelView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
 
-        textView.topAnchor.constraint(equalTo: labelView.bottomAnchor, constant: 6),
-        textView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-        textView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-        textView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        tv.topAnchor.constraint(equalTo: labelView.bottomAnchor, constant: 6),
+        tv.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+        tv.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+        tv.bottomAnchor.constraint(equalTo: container.bottomAnchor)
     ])
 
     return container

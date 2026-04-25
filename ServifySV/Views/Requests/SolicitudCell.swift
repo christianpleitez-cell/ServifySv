@@ -187,41 +187,39 @@ class SolicitudCell: UITableViewCell {
     }
 
     func configure(with solicitud: Solicitud) {
-        let initials = solicitud.cliente.nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
+        let nombre = solicitud.cliente?.nombre ?? ""
+        let initials = nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
         avatarLabel.text = String(initials.prefix(1))
-        clienteLabel.text = solicitud.cliente.nombre
-        servicioLabel.text = solicitud.servicio.nombreServicio
+        clienteLabel.text = nombre
+        servicioLabel.text = solicitud.servicio?.nombreServicio ?? ""
         descripcionLabel.text = solicitud.descripcion
-        precioLabel.text = "$\(Int(solicitud.servicio.precioReferencia))"
-        estadoBadge.text = solicitud.estado.rawValue
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        fechaLabel.text = formatter.string(from: solicitud.fechaSolicitud)
+        precioLabel.text = "$\(Int(solicitud.servicio?.precioReferencia ?? 0))"
+        estadoBadge.text = solicitud.estado
+        fechaLabel.text = solicitud.fechaSolicitud ?? ""
 
         updateStateAppearance(for: solicitud.estado)
     }
 
-    private func updateStateAppearance(for estado: EstadoSolicitud) {
+    private func updateStateAppearance(for estado: String) {
         switch estado {
-        case .pendiente:
+        case "pendiente":
             estadoBadge.textColor = .systemOrange
             acceptButton.isHidden = false
             rejectButton.isHidden = false
-        case .aceptada:
+        case "aceptada":
             estadoBadge.textColor = .systemGreen
             acceptButton.isHidden = true
             rejectButton.isHidden = true
-        case .enProgreso:
-            estadoBadge.textColor = .systemBlue
-            acceptButton.isHidden = true
-            rejectButton.isHidden = true
-        case .completada:
+        case "completada":
             estadoBadge.textColor = .systemGray
             acceptButton.isHidden = true
             rejectButton.isHidden = true
-        case .cancelada:
+        case "cancelada", "rechazada":
             estadoBadge.textColor = .systemRed
+            acceptButton.isHidden = true
+            rejectButton.isHidden = true
+        default:
+            estadoBadge.textColor = .systemBlue
             acceptButton.isHidden = true
             rejectButton.isHidden = true
         }

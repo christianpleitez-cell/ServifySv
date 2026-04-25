@@ -16,6 +16,7 @@
 		2477B495739964F58E53C0C6 /* HistorialViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F04B5B6C9E00FDAB5674F08 /* HistorialViewController.swift */; };
 		30D6A27C9971F41B9AEAF642 /* Calificacion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491D835D3555711088542151 /* Calificacion.swift */; };
 		4833C20E978099E09090D0CF /* Solicitud.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF3B41CE5AD6521FF05719EC /* Solicitud.swift */; };
+		CC4A1B2C3D4E5F6A7B8C9D0E /* Resena.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD5B2C3D4E5F6A7B8C9D0E1F /* Resena.swift */; };
 		4EA461907E30C587F85C4C76 /* ClienteProfileViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 928621C95001DF601C5633D3 /* ClienteProfileViewController.swift */; };
 		52F568BAD8386DD99271F2A8 /* NuevaSolicitudViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21620C0B7B9D58929DDCEBE /* NuevaSolicitudViewController.swift */; };
 		62CDDB715F12DCECB02CD03A /* ProfesionalDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C386B1CDA109303479EB528 /* ProfesionalDetailViewController.swift */; };
@@ -33,6 +34,12 @@
 		C3782F215A4EF90CFE586DEB /* Mensaje.swift in Sources */ = {isa = PBXBuildFile; fileRef = 947B7A59B5230B3ABB2AABFF /* Mensaje.swift */; };
 		C5105CAF86973602A417771E /* MainTabBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0923F2C53A8F7C3148537817 /* MainTabBarController.swift */; };
 		CB4387800F354AE5EBCF4571 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42043177EA6456CCC4CA9A7A /* MockData.swift */; };
+		EE6B7C8D9E0F1A2B3C4D5E6F /* APIManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF7C8D9E0F1A2B3C4D5E6F7A /* APIManager.swift */; };
+		AA8D9E0F1A2B3C4D5E6F7A8B /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB9E0F1A2B3C4D5E6F7A8B9C /* AuthManager.swift */; };
+		A1A2A3A4A5A6A7A8A9A0AAAB /* ChatsListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2B3B4B5B6B7B8B9B0BBBC /* ChatsListViewController.swift */; };
+		C1C2C3C4C5C6C7C8C9C0CCCD /* ProfesionalHomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D2D3D4D5D6D7D8D9D0DDDE /* ProfesionalHomeViewController.swift */; };
+		E1E2E3E4E5E6E7E8E9E0EEEF /* ProfesionalProfileViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1F2F3F4F5F6F7F8F9F0FFF0 /* ProfesionalProfileViewController.swift */; };
+		1A2B3C4D5E6F7A8B9C0D1E2F /* PublicarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A3B4C5D6E7F8A9B0C1D2E3F /* PublicarViewController.swift */; };
 		EDB5618BC70A8D36C6BA293F /* SolicitudCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD54AAA2AA75FA935E7FA637 /* SolicitudCell.swift */; };
 		F77AC1CF6B2B1BB7D6E49C7C /* ChatViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEA9036DE13E8674620AD32E /* ChatViewController.swift */; };
 		FEDA7B39E61846607740AA4E /* Profesional.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F029C7E1B03BD5F0E7F7B21 /* Profesional.swift */; };
@@ -47,7 +54,14 @@
 		19510F71463E50EE6ED0D559 /* CalificarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalificarViewController.swift; sourceTree = "<group>"; };
 		2F029C7E1B03BD5F0E7F7B21 /* Profesional.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profesional.swift; sourceTree = "<group>"; };
 		42043177EA6456CCC4CA9A7A /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
+		FF7C8D9E0F1A2B3C4D5E6F7A /* APIManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIManager.swift; sourceTree = "<group>"; };
+		BB9E0F1A2B3C4D5E6F7A8B9C /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		B1B2B3B4B5B6B7B8B9B0BBBC /* ChatsListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsListViewController.swift; sourceTree = "<group>"; };
+		D1D2D3D4D5D6D7D8D9D0DDDE /* ProfesionalHomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfesionalHomeViewController.swift; sourceTree = "<group>"; };
+		F1F2F3F4F5F6F7F8F9F0FFF0 /* ProfesionalProfileViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfesionalProfileViewController.swift; sourceTree = "<group>"; };
+		2A3B4C5D6E7F8A9B0C1D2E3F /* PublicarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicarViewController.swift; sourceTree = "<group>"; };
 		491D835D3555711088542151 /* Calificacion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Calificacion.swift; sourceTree = "<group>"; };
+		DD5B2C3D4E5F6A7B8C9D0E1F /* Resena.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Resena.swift; sourceTree = "<group>"; };
 		58C30DB47E50B0977BF3F71C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		5C9C8D1681A05C3D3EDBD4FA /* ChatListCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListCell.swift; sourceTree = "<group>"; };
 		5F04B5B6C9E00FDAB5674F08 /* HistorialViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorialViewController.swift; sourceTree = "<group>"; };
@@ -77,6 +91,7 @@
 			children = (
 				19510F71463E50EE6ED0D559 /* CalificarViewController.swift */,
 				E21620C0B7B9D58929DDCEBE /* NuevaSolicitudViewController.swift */,
+				2A3B4C5D6E7F8A9B0C1D2E3F /* PublicarViewController.swift */,
 				8A5607C6705CBC6C166E867E /* SolicitudDetailViewController.swift */,
 				AC524497F51A1BFFBEA65816 /* SolicitudesViewController.swift */,
 			);
@@ -98,6 +113,7 @@
 				170F5ACC55D3C363527ED8E2 /* Historial.swift */,
 				947B7A59B5230B3ABB2AABFF /* Mensaje.swift */,
 				2F029C7E1B03BD5F0E7F7B21 /* Profesional.swift */,
+				DD5B2C3D4E5F6A7B8C9D0E1F /* Resena.swift */,
 				65C21C38A9AC62F128FC77DA /* Servicio.swift */,
 				DF3B41CE5AD6521FF05719EC /* Solicitud.swift */,
 				6926DDE2C0CBF3B4BA65AB77 /* User.swift */,
@@ -157,6 +173,7 @@
 			children = (
 				928621C95001DF601C5633D3 /* ClienteProfileViewController.swift */,
 				0C386B1CDA109303479EB528 /* ProfesionalDetailViewController.swift */,
+				F1F2F3F4F5F6F7F8F9F0FFF0 /* ProfesionalProfileViewController.swift */,
 			);
 			path = Profile;
 			sourceTree = "<group>";
@@ -179,6 +196,7 @@
 			isa = PBXGroup;
 			children = (
 				9CB5D001136C40E6DDB5C268 /* HomeViewController.swift */,
+				D1D2D3D4D5D6D7D8D9D0DDDE /* ProfesionalHomeViewController.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -215,6 +233,7 @@
 			isa = PBXGroup;
 			children = (
 				BEA9036DE13E8674620AD32E /* ChatViewController.swift */,
+				B1B2B3B4B5B6B7B8B9B0BBBC /* ChatsListViewController.swift */,
 			);
 			path = Chat;
 			sourceTree = "<group>";
@@ -230,6 +249,8 @@
 		E9A8B89FF61F326B632E0EB0 /* Helpers */ = {
 			isa = PBXGroup;
 			children = (
+				FF7C8D9E0F1A2B3C4D5E6F7A /* APIManager.swift */,
+				BB9E0F1A2B3C4D5E6F7A8B9C /* AuthManager.swift */,
 				42043177EA6456CCC4CA9A7A /* MockData.swift */,
 			);
 			path = Helpers;
@@ -318,8 +339,15 @@
 				C5105CAF86973602A417771E /* MainTabBarController.swift in Sources */,
 				C3782F215A4EF90CFE586DEB /* Mensaje.swift in Sources */,
 				9E194A46BC83ACC113F5817F /* MensajeCell.swift in Sources */,
+				EE6B7C8D9E0F1A2B3C4D5E6F /* APIManager.swift in Sources */,
+				AA8D9E0F1A2B3C4D5E6F7A8B /* AuthManager.swift in Sources */,
+				A1A2A3A4A5A6A7A8A9A0AAAB /* ChatsListViewController.swift in Sources */,
+				C1C2C3C4C5C6C7C8C9C0CCCD /* ProfesionalHomeViewController.swift in Sources */,
+				E1E2E3E4E5E6E7E8E9E0EEEF /* ProfesionalProfileViewController.swift in Sources */,
+				1A2B3C4D5E6F7A8B9C0D1E2F /* PublicarViewController.swift in Sources */,
 				CB4387800F354AE5EBCF4571 /* MockData.swift in Sources */,
 				52F568BAD8386DD99271F2A8 /* NuevaSolicitudViewController.swift in Sources */,
+				CC4A1B2C3D4E5F6A7B8C9D0E /* Resena.swift in Sources */,
 				FEDA7B39E61846607740AA4E /* Profesional.swift in Sources */,
 				9234AEC88B387D2C0E2189B1 /* ProfesionalCell.swift in Sources */,
 				62CDDB715F12DCECB02CD03A /* ProfesionalDetailViewController.swift in Sources */,

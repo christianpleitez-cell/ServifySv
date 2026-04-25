@@ -86,8 +86,9 @@ class RegisterViewController: UIViewController {
         container.foregroundColor = .systemBlue
 
         var fullConfig = config
-        fullConfig.attributedTitle = AttributeString("👤\nCliente\nBusca servicios", attributes: container)
+        fullConfig.attributedTitle = AttributedString("👤\nCliente", attributes: container)
         fullConfig.imagePadding = 4
+        fullConfig.titleAlignment = .center
         btn.configuration = fullConfig
 
         return btn
@@ -108,18 +109,25 @@ class RegisterViewController: UIViewController {
         container.foregroundColor = .darkGray
 
         var fullConfig = config
-        fullConfig.attributedTitle = AttributeString("👔\nProfesional\nOfrece servicios", attributes: container)
+        fullConfig.attributedTitle = AttributedString("👔\nProfesional", attributes: container)
         fullConfig.imagePadding = 4
+        fullConfig.titleAlignment = .center
         btn.configuration = fullConfig
 
         return btn
     }()
 
-    private let nombreTextField = createTextField(placeholder: "Juan Pérez", label: "Nombre Completo")
-    private let emailTextField = createTextField(placeholder: "correo@ejemplo.com", label: "Correo Electrónico", keyboardType: .emailAddress)
-    private let telefonoTextField = createTextField(placeholder: "+52 555 1234 5678", label: "Teléfono", keyboardType: .phonePad)
-    private let passwordTextField = createTextField(placeholder: "••••••••", label: "Contraseña", isSecure: true)
-    private let confirmPasswordTextField = createTextField(placeholder: "••••••••", label: "Confirmar Contraseña", isSecure: true)
+    private var nombreTextField: UITextField!
+    private var emailTextField: UITextField!
+    private var telefonoTextField: UITextField!
+    private var passwordTextField: UITextField!
+    private var confirmPasswordTextField: UITextField!
+
+    private lazy var nombreContainer = createTextField(textField: &nombreTextField, placeholder: "Juan Pérez", label: "Nombre Completo")
+    private lazy var emailContainer = createTextField(textField: &emailTextField, placeholder: "correo@ejemplo.com", label: "Correo Electrónico", keyboardType: .emailAddress)
+    private lazy var telefonoContainer = createTextField(textField: &telefonoTextField, placeholder: "+52 555 1234 5678", label: "Teléfono", keyboardType: .phonePad)
+    private lazy var passwordContainer = createTextField(textField: &passwordTextField, placeholder: "••••••••", label: "Contraseña", isSecure: true)
+    private lazy var confirmPasswordContainer = createTextField(textField: &confirmPasswordTextField, placeholder: "••••••••", label: "Confirmar Contraseña", isSecure: true)
 
     private let registerButton: UIButton = {
         let btn = UIButton(type: .system)
@@ -183,8 +191,8 @@ class RegisterViewController: UIViewController {
         cardView.addSubview(scrollView)
 
         let cardStackView = UIStackView(arrangedSubviews: [
-            cardTitleLabel, typeSelectorStack, nombreTextField, emailTextField,
-            telefonoTextField, passwordTextField, confirmPasswordTextField,
+            cardTitleLabel, typeSelectorStack, nombreContainer, emailContainer,
+            telefonoContainer, passwordContainer, confirmPasswordContainer,
             registerButton, loginButton
         ])
         cardStackView.axis = .vertical
@@ -255,18 +263,72 @@ class RegisterViewController: UIViewController {
     }
 
     @objc private func registerTapped() {
-        let tabBar = MainTabBarController()
-        tabBar.modalPresentationStyle = .fullScreen
-        present(tabBar, animated: true)
+        guard let nombre = nombreTextField.text, !nombre.isEmpty else {
+            showAlert(title: "Error", message: "Por favor ingresa tu nombre completo")
+            return
+        }
+
+        guard let email = emailTextField.text, !email.isEmpty else {
+            showAlert(title: "Error", message: "Por favor ingresa tu correo")
+            return
+        }
+
+        guard let telefono = telefonoTextField.text, !telefono.isEmpty else {
+            showAlert(title: "Error", message: "Por favor ingresa tu teléfono")
+            return
+        }
+
+        guard let password = passwordTextField.text, !password.isEmpty else {
+            showAlert(title: "Error", message: "Por favor ingresa tu contraseña")
+            return
+        }
+
+        guard let confirmPassword = confirmPasswordTextField.text, !confirmPassword.isEmpty else {
+            showAlert(title: "Error", message: "Por favor confirma tu contraseña")
+            return
+        }
+
+        guard password == confirmPassword else {
+            showAlert(title: "Error", message: "Las contraseñas no coinciden")
+            return
+        }
+
+        registerButton.isEnabled = false
+        let originalTitle = registerButton.title(for: .normal)
+        registerButton.setTitle("Creando...", for: .normal)
+
+        APIManager.shared.register(nombre: nombre, correo: email, telefono: telefono, contrasena: password, tipoUsuario: selectedUserType) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.registerButton.isEnabled = true
+                self?.registerButton.setTitle(originalTitle, for: .normal)
+
+                switch result {
+                case .success:
+                    self?.showAlert(title: "Éxito", message: "Cuenta creada correctamente. Por favor inicia sesión.")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        self?.navigationController?.popViewController(animated: true)
+                    }
+
+                case .failure(let error):
+                    self?.showAlert(title: "Error de registro", message: error.localizedDescription)
+                }
+            }
+        }
     }
 
     @objc private func loginTapped() {
-        navigationController?.popViewController(animated: true)
+        navigationController?.dismiss(animated: true)
+    }
+
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 }
 
 // MARK: - Helper
-private func createTextField(placeholder: String, label: String, keyboardType: UIKeyboardType = .default, isSecure: Bool = false) -> UIView {
+private func createTextField(textField: inout UITextField?, placeholder: String, label: String, keyboardType: UIKeyboardType = .default, isSecure: Bool = false) -> UIView {
     let container = UIView()
     container.translatesAutoresizingMaskIntoConstraints = false
 
@@ -276,35 +338,37 @@ private func createTextField(placeholder: String, label: String, keyboardType: U
     labelView.textColor = .black
     labelView.translatesAutoresizingMaskIntoConstraints = false
 
-    let textField = UITextField()
-    textField.placeholder = placeholder
-    textField.borderStyle = .none
-    textField.keyboardType = keyboardType
-    textField.isSecureTextEntry = isSecure
+    let tf = UITextField()
+    tf.placeholder = placeholder
+    tf.borderStyle = .none
+    tf.keyboardType = keyboardType
+    tf.isSecureTextEntry = isSecure
     if !isSecure {
-        textField.autocapitalizationType = .none
+        tf.autocapitalizationType = .none
     }
-    textField.backgroundColor = UIColor(white: 0.95, alpha: 1)
-    textField.layer.cornerRadius = 8
-    textField.translatesAutoresizingMaskIntoConstraints = false
+    tf.backgroundColor = UIColor(white: 0.95, alpha: 1)
+    tf.layer.cornerRadius = 8
+    tf.translatesAutoresizingMaskIntoConstraints = false
 
     let paddingView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 0))
-    textField.leftView = paddingView
-    textField.leftViewMode = .always
+    tf.leftView = paddingView
+    tf.leftViewMode = .always
+
+    textField = tf // Store reference
 
     container.addSubview(labelView)
-    container.addSubview(textField)
+    container.addSubview(tf)
 
     NSLayoutConstraint.activate([
         labelView.topAnchor.constraint(equalTo: container.topAnchor),
         labelView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
         labelView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
 
-        textField.topAnchor.constraint(equalTo: labelView.bottomAnchor, constant: 4),
-        textField.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-        textField.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-        textField.heightAnchor.constraint(equalToConstant: 44),
-        textField.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        tf.topAnchor.constraint(equalTo: labelView.bottomAnchor, constant: 4),
+        tf.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+        tf.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+        tf.heightAnchor.constraint(equalToConstant: 44),
+        tf.bottomAnchor.constraint(equalTo: container.bottomAnchor)
     ])
 
     return container

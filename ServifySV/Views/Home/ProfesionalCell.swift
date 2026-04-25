@@ -18,7 +18,7 @@ class ProfesionalCell: UITableViewCell {
         return v
     }()
 
-    private let imageView: UIImageView = {
+    private let categoryImageView: UIImageView = {
         let iv = UIImageView()
         iv.contentMode = .scaleAspectFill
         iv.clipsToBounds = true
@@ -120,7 +120,7 @@ class ProfesionalCell: UITableViewCell {
         infoView.addSubview(descripcionLabel)
         infoView.addSubview(precioLabel)
 
-        cardView.addSubview(imageView)
+        cardView.addSubview(categoryImageView)
         cardView.addSubview(infoView)
         contentView.addSubview(cardView)
 
@@ -130,12 +130,12 @@ class ProfesionalCell: UITableViewCell {
             cardView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
 
-            imageView.topAnchor.constraint(equalTo: cardView.topAnchor),
-            imageView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
-            imageView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
-            imageView.heightAnchor.constraint(equalToConstant: 120),
+            categoryImageView.topAnchor.constraint(equalTo: cardView.topAnchor),
+            categoryImageView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
+            categoryImageView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
+            categoryImageView.heightAnchor.constraint(equalToConstant: 120),
 
-            infoView.topAnchor.constraint(equalTo: imageView.bottomAnchor),
+            infoView.topAnchor.constraint(equalTo: categoryImageView.bottomAnchor),
             infoView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
             infoView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
             infoView.bottomAnchor.constraint(equalTo: cardView.bottomAnchor),
@@ -174,16 +174,19 @@ class ProfesionalCell: UITableViewCell {
 
     // MARK: - Configure
     func configure(with profesional: Profesional) {
-        let initials = profesional.usuario.nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
+        let nombre = profesional.usuario?.nombre ?? ""
+        let initials = nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
         avatarLabel.text = String(initials.prefix(2))
-        nombreLabel.text = profesional.usuario.nombre
+        nombreLabel.text = nombre
         especialidadLabel.text = profesional.especialidad
-        ratingLabel.text = "⭐ \(profesional.calificacionPromedio) (\(profesional.totalCalificaciones))"
+        let rating = profesional.calificacionPromedio ?? 0.0
+        let total = profesional.totalCalificaciones ?? 0
+        ratingLabel.text = "⭐ \(String(format: "%.1f", rating)) (\(total))"
 
-        if let servicio = profesional.servicios.first {
+        if let servicio = profesional.servicios?.first {
             tituloServicioLabel.text = servicio.nombreServicio
             descripcionLabel.text = "Servicio profesional con más de 10 años de experiencia. Construcción, remodelación, acabados."
-            imageView.image = getImageForCategory(servicio.categoria)
+            categoryImageView.image = getImageForCategory(CategoriaServicio(rawValue: servicio.categoria) ?? .otro)
             precioLabel.text = "$\(String(format: "%.0f", servicio.precioReferencia))/día"
         }
     }

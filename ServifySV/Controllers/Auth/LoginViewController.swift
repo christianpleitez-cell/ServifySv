@@ -79,8 +79,9 @@ class LoginViewController: UIViewController {
         container.foregroundColor = .systemBlue
 
         var fullConfig = config
-        fullConfig.attributedTitle = AttributeString("👤\nCliente", attributes: container)
+        fullConfig.attributedTitle = AttributedString("👤\nCliente", attributes: container)
         fullConfig.imagePadding = 8
+        fullConfig.titleAlignment = .center
         btn.configuration = fullConfig
 
         return btn
@@ -101,8 +102,9 @@ class LoginViewController: UIViewController {
         container.foregroundColor = .darkGray
 
         var fullConfig = config
-        fullConfig.attributedTitle = AttributeString("👔\nProfesional", attributes: container)
+        fullConfig.attributedTitle = AttributedString("👔\nProfesional", attributes: container)
         fullConfig.imagePadding = 8
+        fullConfig.titleAlignment = .center
         btn.configuration = fullConfig
 
         return btn
@@ -278,9 +280,43 @@ class LoginViewController: UIViewController {
     }
 
     @objc private func loginTapped() {
-        let tabBar = MainTabBarController()
-        tabBar.modalPresentationStyle = .fullScreen
-        present(tabBar, animated: true)
+        // Validate inputs
+        guard let email = emailTextField.text, !email.isEmpty else {
+            showAlert(title: "Error", message: "Por favor ingresa tu correo")
+            return
+        }
+
+        guard let password = passwordTextField.text, !password.isEmpty else {
+            showAlert(title: "Error", message: "Por favor ingresa tu contraseña")
+            return
+        }
+
+        // Show loading
+        loginButton.isEnabled = false
+        let originalTitle = loginButton.title(for: .normal)
+        loginButton.setTitle("Cargando...", for: .normal)
+
+        // Call API
+        APIManager.shared.login(correo: email, contrasena: password, tipoUsuario: selectedUserType) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.loginButton.isEnabled = true
+                self?.loginButton.setTitle(originalTitle, for: .normal)
+
+                switch result {
+                case .success(let response):
+                    // Save session
+                    AuthManager.shared.saveSession(token: response.token, user: response.usuario)
+
+                    // Navigate to tabs
+                    let tabBar = MainTabBarController()
+                    tabBar.modalPresentationStyle = .fullScreen
+                    self?.present(tabBar, animated: true)
+
+                case .failure(let error):
+                    self?.showAlert(title: "Error de login", message: error.localizedDescription)
+                }
+            }
+        }
     }
 
     @objc private func registerTapped() {
@@ -288,5 +324,11 @@ class LoginViewController: UIViewController {
         let nav = UINavigationController(rootViewController: registerVC)
         nav.modalPresentationStyle = .fullScreen
         present(nav, animated: true)
+    }
+
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 }

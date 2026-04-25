@@ -4,6 +4,7 @@ class NuevaSolicitudViewController: UIViewController {
 
     // MARK: - Properties
     private let profesional: Profesional
+    private var selectedServicioIndex: Int = 0
 
     // MARK: - UI Components
     private let scrollView = UIScrollView()
@@ -174,16 +175,53 @@ class NuevaSolicitudViewController: UIViewController {
     }
 
     private func configure() {
-        profesionalNombreLabel.text = profesional.usuario.nombre
+        profesionalNombreLabel.text = profesional.usuario?.nombre ?? ""
         profesionalEspecialidadLabel.text = profesional.especialidad
     }
 
     // MARK: - Actions
     @objc private func enviarTapped() {
-        let alert = UIAlertController(title: "Solicitud Enviada", message: "Tu solicitud ha sido enviada a \(profesional.usuario.nombre). Te notificaremos cuando acepte.", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
-            self?.navigationController?.popToRootViewController(animated: true)
-        })
+        guard let descripcion = descripcionTextView.text, !descripcion.isEmpty, descripcion != "Describe el trabajo que necesitas..." else {
+            showAlert(title: "Error", message: "Por favor describe el trabajo que necesitas")
+            return
+        }
+
+        guard let clienteId = AuthManager.shared.currentUser?.id else { return }
+
+        guard let servicios = profesional.servicios, selectedServicioIndex < servicios.count else { return }
+        let servicioSeleccionado = servicios[selectedServicioIndex]
+
+        enviarButton.isEnabled = false
+        let originalTitle = enviarButton.title(for: .normal)
+        enviarButton.setTitle("Enviando...", for: .normal)
+
+        APIManager.shared.createSolicitud(
+            idCliente: clienteId,
+            idProfesional: profesional.id,
+            idServicio: servicioSeleccionado.id,
+            descripcion: descripcion
+        ) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.enviarButton.isEnabled = true
+                self?.enviarButton.setTitle(originalTitle, for: .normal)
+
+                switch result {
+                case .success:
+                    self?.showAlert(title: "Solicitud Enviada", message: "Tu solicitud ha sido enviada a \(self?.profesional.usuario?.nombre ?? "el profesional"). Te notificaremos cuando acepte.")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        self?.navigationController?.popToRootViewController(animated: true)
+                    }
+
+                case .failure(let error):
+                    self?.showAlert(title: "Error", message: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
 }
@@ -194,12 +232,16 @@ extension NuevaSolicitudViewController: UIPickerViewDataSource, UIPickerViewDele
     func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
 
     func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
-        profesional.servicios.count
+        profesional.servicios?.count ?? 0
     }
 
     func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
-        let s = profesional.servicios[row]
+        guard let s = profesional.servicios?[row] else { return nil }
         return "\(s.nombreServicio) - $\(String(format: "%.2f", s.precioReferencia))"
+    }
+
+    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+        selectedServicioIndex = row
     }
 }
 

@@ -45,6 +45,11 @@ class HomeViewController: UIViewController {
         setupCollectionView()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadProfesionales()
+    }
+
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = UIColor(white: 0.97, alpha: 1)
@@ -55,7 +60,8 @@ class HomeViewController: UIViewController {
         view.addSubview(headerView)
 
         let holaLabel = UILabel()
-        holaLabel.text = "Hola, Carlos"
+        let userName = AuthManager.shared.currentUser?.nombre ?? "Usuario"
+        holaLabel.text = "Hola, \(userName)"
         holaLabel.font = UIFont.boldSystemFont(ofSize: 24)
         holaLabel.textColor = .black
         holaLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -126,6 +132,36 @@ class HomeViewController: UIViewController {
         categoryCollectionView.dataSource = self
         categoryCollectionView.register(CategoryCell.self, forCellWithReuseIdentifier: CategoryCell.identifier)
     }
+
+    private func loadProfesionales() {
+        if let categoria = categoriaSeleccionada {
+            APIManager.shared.getProfesionalesByCategoria(categoria: categoria.rawValue) { [weak self] result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let response):
+                        self?.profesionales = response.profesionales
+                        self?.tableView.reloadData()
+                    case .failure:
+                        self?.profesionales = []
+                        self?.tableView.reloadData()
+                    }
+                }
+            }
+        } else {
+            APIManager.shared.getProfesionales { [weak self] result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let response):
+                        self?.profesionales = response.profesionales
+                        self?.tableView.reloadData()
+                    case .failure:
+                        self?.profesionales = []
+                        self?.tableView.reloadData()
+                    }
+                }
+            }
+        }
+    }
 }
 
 // MARK: - UITableViewDataSource & Delegate
@@ -173,15 +209,10 @@ extension HomeViewController: UICollectionViewDataSource, UICollectionViewDelega
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         if indexPath.item == 0 {
             categoriaSeleccionada = nil
-            profesionales = MockData.profesionales
         } else {
-            let cat = CategoriaServicio.allCases[indexPath.item - 1]
-            categoriaSeleccionada = cat
-            profesionales = MockData.profesionales.filter { prof in
-                prof.servicios.contains { $0.categoria == cat }
-            }
+            categoriaSeleccionada = CategoriaServicio.allCases[indexPath.item - 1]
         }
-        tableView.reloadData()
         collectionView.reloadData()
+        loadProfesionales()
     }
 }

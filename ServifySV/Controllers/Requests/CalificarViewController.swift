@@ -132,7 +132,7 @@ class CalificarViewController: UIViewController {
     }
 
     private func configure() {
-        subtitleLabel.text = "¿Cómo fue tu experiencia con \(solicitud.profesional.usuario.nombre)?"
+        subtitleLabel.text = "¿Cómo fue tu experiencia con \(solicitud.profesional?.usuario?.nombre ?? "el profesional")?"
     }
 
     private func updateStars() {
@@ -148,10 +148,39 @@ class CalificarViewController: UIViewController {
     }
 
     @objc private func enviarTapped() {
-        let alert = UIAlertController(title: "¡Gracias por tu reseña!", message: "Tu calificación de \(puntuacionSeleccionada) estrella(s) ha sido enviada.", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
-            self?.navigationController?.popToRootViewController(animated: true)
-        })
-        present(alert, animated: true)
+        guard let clienteId = AuthManager.shared.currentUser?.id else { return }
+
+        let comentario = comentarioTextView.text ?? ""
+
+        enviarButton.isEnabled = false
+        let originalTitle = enviarButton.title(for: .normal)
+        enviarButton.setTitle("Enviando...", for: .normal)
+
+        APIManager.shared.createResena(
+            idSolicitud: solicitud.id,
+            idCliente: clienteId,
+            idProfesional: solicitud.profesional?.id ?? 0,
+            calificacion: puntuacionSeleccionada,
+            comentario: comentario
+        ) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.enviarButton.isEnabled = true
+                self?.enviarButton.setTitle(originalTitle, for: .normal)
+
+                switch result {
+                case .success:
+                    let alert = UIAlertController(title: "¡Gracias por tu reseña!", message: "Tu calificación de \(self?.puntuacionSeleccionada ?? 5) estrella(s) ha sido enviada.", preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
+                        self?.navigationController?.popToRootViewController(animated: true)
+                    })
+                    self?.present(alert, animated: true)
+
+                case .failure(let error):
+                    let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self?.present(alert, animated: true)
+                }
+            }
+        }
     }
 }

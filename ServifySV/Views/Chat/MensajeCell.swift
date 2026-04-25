@@ -60,9 +60,7 @@ class MensajeCell: UITableViewCell {
 
     func configure(with mensaje: Mensaje) {
         messageLabel.text = mensaje.contenido
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        timeLabel.text = formatter.string(from: mensaje.fechaEnvio)
+        timeLabel.text = mensaje.fechaEnvio ?? ""
     }
 }
 
@@ -137,10 +135,8 @@ class MensajeRecibidoCell: UITableViewCell {
     required init?(coder: NSCoder) { fatalError() }
 
     func configure(with mensaje: Mensaje) {
-        senderLabel.text = mensaje.remitente.nombre
+        senderLabel.text = mensaje.remitente?.nombre ?? ""
         messageLabel.text = mensaje.contenido
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        timeLabel.text = formatter.string(from: mensaje.fechaEnvio)
+        timeLabel.text = mensaje.fechaEnvio ?? ""
     }
 }

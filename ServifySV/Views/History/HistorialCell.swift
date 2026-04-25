@@ -108,6 +108,6 @@ class HistorialCell: UITableViewCell {
         profesionalLabel.text = profesional
         fechaLabel.text = fecha
         ratingLabel.text = rating
-        comentarioLabel.text = ""\(comentario)""
+        comentarioLabel.text = comentario
     }
 }

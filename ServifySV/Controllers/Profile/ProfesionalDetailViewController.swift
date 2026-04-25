@@ -5,6 +5,7 @@ class ProfesionalDetailViewController: UIViewController {
     // MARK: - Properties
     private let profesional: Profesional
     private let isProfessionalProfile: Bool
+    private var resenas: [Resena] = []
 
     // MARK: - UI Components
     private let scrollView = UIScrollView()
@@ -176,6 +177,7 @@ class ProfesionalDetailViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = true
+        loadResenas()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -312,14 +314,17 @@ class ProfesionalDetailViewController: UIViewController {
     }
 
     private func configure() {
-        let initials = profesional.usuario.nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
+        let nombre = profesional.usuario?.nombre ?? ""
+        let initials = nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
         avatarLabel.text = String(initials.prefix(2))
-        nombreLabel.text = profesional.usuario.nombre
+        nombreLabel.text = nombre
         especialidadLabel.text = profesional.especialidad
-        ratingLabel.text = "⭐ \(profesional.calificacionPromedio) • \(profesional.totalCalificaciones) reseñas"
+        let rating = profesional.calificacionPromedio ?? 0.0
+        let totalResenas = profesional.totalCalificaciones ?? 0
+        ratingLabel.text = "⭐ \(String(format: "%.1f", rating)) • \(totalResenas) reseñas"
         descripcionLabel.text = profesional.descripcion
 
-        if let servicio = profesional.servicios.first {
+        if let servicio = profesional.servicios?.first {
             let precioText = String(format: "Tarifa por día\n$%.0f", servicio.precioReferencia)
             precioButton.setAttributedTitle(NSAttributedString(
                 string: precioText,
@@ -327,10 +332,29 @@ class ProfesionalDetailViewController: UIViewController {
             ), for: .normal)
         }
 
-        headerImageView.image = getImageForCategory(profesional.servicios.first?.categoria)
+        let categoriaStr = profesional.servicios?.first?.categoria
+        headerImageView.image = getImageForCategory(categoriaStr.flatMap { CategoriaServicio(rawValue: $0) })
 
         addContactInfo()
-        addResenas()
+    }
+
+    private func loadResenas() {
+        APIManager.shared.getResenasProfesional(profesionalId: profesional.id) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    self?.resenas = response.resenas
+                    self?.reseniasTitleLabel.text = "Reseñas (\(response.resenas.count))"
+                    self?.reseniasStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+                    self?.addResenas()
+
+                case .failure:
+                    self?.resenas = []
+                    self?.reseniasTitleLabel.text = "Reseñas (0)"
+                    self?.reseniasStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+                }
+            }
+        }
     }
 
     private func addContactInfo() {
@@ -338,7 +362,7 @@ class ProfesionalDetailViewController: UIViewController {
             ("📞", "+52 555 9876 5432"),
             ("📧", "juan.pérez@email.com"),
             ("📍", "Ciudad de México, CDMX"),
-            ("⏰", "\(profesional.experiencia)+ años de experiencia")
+            ("⏰", "\(profesional.experiencia ?? 0)+ años de experiencia")
         ]
 
         for (icon, text) in items {
@@ -354,13 +378,11 @@ class ProfesionalDetailViewController: UIViewController {
     }
 
     private func addResenas() {
-        let reviews = [
-            ("Pedro Ramirez", "⭐⭐⭐⭐⭐", "2026-02-20", "Excelente trabajo, muy profesional y puntual. Lo recomiendo al 100%"),
-            ("Maria González", "⭐⭐⭐⭐", "2026-02-15", "Quedó perfecto, superó mis expectativas. Definitivamente volveré a contratarlo"),
-            ("Jorge Martinez", "⭐⭐⭐", "2026-02-10", "Buen trabajo, aunque tardó un poco más de lo esperado")
-        ]
-
-        for (nombre, stars, fecha, comentario) in reviews {
+        for resena in resenas {
+            let nombre = "Usuario"
+            let stars = String(repeating: "⭐", count: resena.calificacion) + String(repeating: "☆", count: 5 - resena.calificacion)
+            let fecha = resena.fechaResena ?? ""
+            let comentario = resena.comentario
             let container = UIView()
             container.translatesAutoresizingMaskIntoConstraints = false
 
@@ -472,8 +494,7 @@ class ProfesionalDetailViewController: UIViewController {
     }
 
     @objc private func enviarTapped() {
-        let alert = UIAlertController(title: "Solicitud Enviada", message: "Tu solicitud ha sido enviada al profesional", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        let nuevaSolicitudVC = NuevaSolicitudViewController(profesional: profesional)
+        navigationController?.pushViewController(nuevaSolicitudVC, animated: true)
     }
 }

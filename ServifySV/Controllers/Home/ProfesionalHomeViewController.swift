@@ -19,6 +19,11 @@ class ProfesionalHomeViewController: UIViewController {
         setupTableView()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadServicios()
+    }
+
     private func setupUI() {
         view.backgroundColor = UIColor(white: 0.97, alpha: 1)
         navigationController?.isNavigationBarHidden = true
@@ -28,7 +33,8 @@ class ProfesionalHomeViewController: UIViewController {
         view.addSubview(headerView)
 
         let holaLabel = UILabel()
-        holaLabel.text = "Hola, Juan"
+        let userName = AuthManager.shared.currentUser?.nombre ?? "Usuario"
+        holaLabel.text = "Hola, \(userName)"
         holaLabel.font = UIFont.boldSystemFont(ofSize: 24)
         holaLabel.textColor = .black
         holaLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -82,6 +88,23 @@ class ProfesionalHomeViewController: UIViewController {
         tableView.dataSource = self
         tableView.register(ProfesionalCell.self, forCellReuseIdentifier: ProfesionalCell.identifier)
     }
+
+    private func loadServicios() {
+        guard let profesionalId = AuthManager.shared.currentUser?.id else { return }
+
+        APIManager.shared.getMisServicios(profesionalId: profesionalId) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    self?.servicios = response.servicios
+                    self?.tableView.reloadData()
+                case .failure:
+                    self?.servicios = []
+                    self?.tableView.reloadData()
+                }
+            }
+        }
+    }
 }
 
 extension ProfesionalHomeViewController: UITableViewDataSource, UITableViewDelegate {
@@ -93,19 +116,27 @@ extension ProfesionalHomeViewController: UITableViewDataSource, UITableViewDeleg
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: ProfesionalCell.identifier, for: indexPath) as! ProfesionalCell
 
-        let profesional = Profesional(
-            id: 1,
-            usuario: User(id: 1, nombre: "Juan Pérez", correo: "juan@example.com", tipoUsuario: .profesional, fechaRegistro: Date(), fotoPerfil: nil),
-            especialidad: "Albañilería",
-            descripcion: "Servicio profesional de albañilería",
-            experiencia: 10,
-            estadoVerificacion: "Verificado",
-            calificacionPromedio: 4.8,
-            totalCalificaciones: 45,
-            servicios: [servicios[indexPath.row]]
-        )
-
-        cell.configure(with: profesional)
+        if let currentUser = AuthManager.shared.currentUser {
+            let profesional = Profesional(
+                id: currentUser.id,
+                usuario: User(
+                    id: currentUser.id,
+                    nombre: currentUser.nombre,
+                    correo: currentUser.correo,
+                    tipoUsuario: currentUser.tipo_usuario == "profesional" ? .profesional : .cliente,
+                    fechaRegistro: Date(),
+                    fotoPerfil: nil
+                ),
+                especialidad: currentUser.nombre,
+                descripcion: "Mi servicio",
+                experiencia: 0,
+                estadoVerificacion: "Verificado",
+                calificacionPromedio: 0,
+                totalCalificaciones: 0,
+                servicios: [servicios[indexPath.row]]
+            )
+            cell.configure(with: profesional)
+        }
         return cell
     }
 

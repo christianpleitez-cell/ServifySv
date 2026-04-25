@@ -48,6 +48,28 @@ class SolicitudDetailViewController: UIViewController {
         return btn
     }()
 
+    private let acceptButton: UIButton = {
+        let btn = UIButton(type: .system)
+        btn.setTitle("Aceptar", for: .normal)
+        btn.backgroundColor = .systemGreen
+        btn.setTitleColor(.white, for: .normal)
+        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: 14)
+        btn.layer.cornerRadius = 8
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        return btn
+    }()
+
+    private let rejectButton: UIButton = {
+        let btn = UIButton(type: .system)
+        btn.setTitle("Rechazar", for: .normal)
+        btn.backgroundColor = .systemRed
+        btn.setTitleColor(.white, for: .normal)
+        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: 14)
+        btn.layer.cornerRadius = 8
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        return btn
+    }()
+
     // MARK: - Init
     init(solicitud: Solicitud) {
         self.solicitud = solicitud
@@ -99,6 +121,14 @@ class SolicitudDetailViewController: UIViewController {
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(closeButton)
 
+        let isProfessional = AuthManager.shared.isProfessional
+        let isPending = solicitud.estado == "pendiente"
+
+        if isProfessional && isPending {
+            headerView.addSubview(acceptButton)
+            headerView.addSubview(rejectButton)
+        }
+
         view.addSubview(messagesTableView)
         view.addSubview(messageInputContainer)
 
@@ -129,7 +159,23 @@ class SolicitudDetailViewController: UIViewController {
             closeButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             closeButton.widthAnchor.constraint(equalToConstant: 24),
             closeButton.heightAnchor.constraint(equalToConstant: 24),
+        ])
 
+        if isProfessional && isPending {
+            NSLayoutConstraint.activate([
+                acceptButton.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8),
+                acceptButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 12),
+                acceptButton.widthAnchor.constraint(equalToConstant: 80),
+                acceptButton.heightAnchor.constraint(equalToConstant: 32),
+
+                rejectButton.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8),
+                rejectButton.leadingAnchor.constraint(equalTo: acceptButton.trailingAnchor, constant: 8),
+                rejectButton.widthAnchor.constraint(equalToConstant: 80),
+                rejectButton.heightAnchor.constraint(equalToConstant: 32),
+            ])
+        }
+
+        NSLayoutConstraint.activate([
             messagesTableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
             messagesTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             messagesTableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -151,10 +197,11 @@ class SolicitudDetailViewController: UIViewController {
             sendButton.heightAnchor.constraint(equalToConstant: 40),
         ])
 
-        let initials = solicitud.cliente.nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
+        let nombre = solicitud.cliente?.nombre ?? ""
+        let initials = nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
         avatarLabel.text = String(initials.prefix(1))
-        clienteLabel.text = solicitud.cliente.nombre
-        servicioLabel.text = solicitud.servicio.nombreServicio
+        clienteLabel.text = nombre
+        servicioLabel.text = solicitud.servicio?.nombreServicio ?? ""
 
         messagesTableView.delegate = self
         messagesTableView.dataSource = self
@@ -162,6 +209,11 @@ class SolicitudDetailViewController: UIViewController {
 
         closeButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
         sendButton.addTarget(self, action: #selector(sendTapped), for: .touchUpInside)
+
+        if isProfessional && isPending {
+            acceptButton.addTarget(self, action: #selector(acceptTapped), for: .touchUpInside)
+            rejectButton.addTarget(self, action: #selector(rejectTapped), for: .touchUpInside)
+        }
     }
 
     private func loadMockMessages() {
@@ -187,6 +239,60 @@ class SolicitudDetailViewController: UIViewController {
             messagesTableView.reloadData()
             messagesTableView.scrollToRow(at: IndexPath(row: mensajes.count - 1, section: 0), at: .bottom, animated: true)
         }
+    }
+
+    @objc private func acceptTapped() {
+        acceptButton.isEnabled = false
+        let originalTitle = acceptButton.title(for: .normal)
+        acceptButton.setTitle("Aceptando...", for: .normal)
+
+        APIManager.shared.updateSolicitudEstado(solicitudId: solicitud.id, estado: "aceptada") { [weak self] result in
+            DispatchQueue.main.async {
+                self?.acceptButton.isEnabled = true
+                self?.acceptButton.setTitle(originalTitle, for: .normal)
+
+                switch result {
+                case .success:
+                    self?.showAlert(title: "Éxito", message: "Solicitud aceptada")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        self?.navigationController?.popViewController(animated: true)
+                    }
+
+                case .failure(let error):
+                    self?.showAlert(title: "Error", message: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    @objc private func rejectTapped() {
+        rejectButton.isEnabled = false
+        let originalTitle = rejectButton.title(for: .normal)
+        rejectButton.setTitle("Rechazando...", for: .normal)
+
+        APIManager.shared.updateSolicitudEstado(solicitudId: solicitud.id, estado: "cancelada") { [weak self] result in
+            DispatchQueue.main.async {
+                self?.rejectButton.isEnabled = true
+                self?.rejectButton.setTitle(originalTitle, for: .normal)
+
+                switch result {
+                case .success:
+                    self?.showAlert(title: "Éxito", message: "Solicitud rechazada")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        self?.navigationController?.popViewController(animated: true)
+                    }
+
+                case .failure(let error):
+                    self?.showAlert(title: "Error", message: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 }
 
@@ -259,128 +365,5 @@ extension SolicitudDetailViewController: UITableViewDataSource, UITableViewDeleg
 
     func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
         60
-    }
-}
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        setupUI()
-        configure()
-    }
-
-    // MARK: - Setup
-    private func setupUI() {
-        view.backgroundColor = .systemBackground
-        title = "Detalle de Solicitud"
-
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        contentView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(scrollView)
-        scrollView.addSubview(contentView)
-
-        let sections = [profesionalSection, servicioSection, descripcionSection, fechaSection, calificacionSection]
-        sections.forEach { $0.translatesAutoresizingMaskIntoConstraints = false }
-
-        [estadoBadge, profesionalSection, servicioSection, descripcionSection,
-         fechaSection, calificacionSection, chatButton, calificarButton].forEach {
-            contentView.addSubview($0)
-        }
-
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
-
-            estadoBadge.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
-            estadoBadge.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            estadoBadge.widthAnchor.constraint(equalToConstant: 120),
-            estadoBadge.heightAnchor.constraint(equalToConstant: 28),
-
-            profesionalSection.topAnchor.constraint(equalTo: estadoBadge.bottomAnchor, constant: 20),
-            profesionalSection.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            profesionalSection.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-
-            servicioSection.topAnchor.constraint(equalTo: profesionalSection.bottomAnchor, constant: 12),
-            servicioSection.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            servicioSection.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-
-            descripcionSection.topAnchor.constraint(equalTo: servicioSection.bottomAnchor, constant: 12),
-            descripcionSection.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            descripcionSection.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-
-            fechaSection.topAnchor.constraint(equalTo: descripcionSection.bottomAnchor, constant: 12),
-            fechaSection.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            fechaSection.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-
-            calificacionSection.topAnchor.constraint(equalTo: fechaSection.bottomAnchor, constant: 12),
-            calificacionSection.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            calificacionSection.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-
-            chatButton.topAnchor.constraint(equalTo: calificacionSection.bottomAnchor, constant: 28),
-            chatButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            chatButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            chatButton.heightAnchor.constraint(equalToConstant: 50),
-
-            calificarButton.topAnchor.constraint(equalTo: chatButton.bottomAnchor, constant: 12),
-            calificarButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            calificarButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            calificarButton.heightAnchor.constraint(equalToConstant: 50),
-            calificarButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -32),
-        ])
-
-        chatButton.addTarget(self, action: #selector(chatTapped), for: .touchUpInside)
-        calificarButton.addTarget(self, action: #selector(calificarTapped), for: .touchUpInside)
-    }
-
-    private func configure() {
-        estadoBadge.text = " \(solicitud.estado.rawValue) "
-        estadoBadge.backgroundColor = colorForEstado(solicitud.estado)
-
-        profesionalSection.setValue(solicitud.profesional.usuario.nombre + " – " + solicitud.profesional.especialidad)
-        servicioSection.setValue(solicitud.servicio.nombreServicio + " ($\(String(format: "%.2f", solicitud.servicio.precioReferencia)))")
-        descripcionSection.setValue(solicitud.descripcion)
-
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        fechaSection.setValue(formatter.string(from: solicitud.fechaSolicitud))
-
-        if let cal = solicitud.calificacion {
-            let stars = String(repeating: "★", count: cal.puntuacion) + String(repeating: "☆", count: 5 - cal.puntuacion)
-            calificacionSection.setValue("\(stars)\n\"\(cal.comentario)\"")
-        } else {
-            calificacionSection.setValue("Sin calificación aún")
-        }
-
-        calificarButton.isHidden = !(solicitud.estado == .completada && solicitud.calificacion == nil)
-    }
-
-    private func colorForEstado(_ estado: EstadoSolicitud) -> UIColor {
-        switch estado {
-        case .pendiente: return .systemOrange
-        case .aceptada: return .systemBlue
-        case .enProgreso: return .systemPurple
-        case .completada: return .systemGreen
-        case .cancelada: return .systemRed
-        }
-    }
-
-    // MARK: - Actions
-    @objc private func chatTapped() {
-        if let chat = MockData.chats.first(where: { $0.solicitud.id == solicitud.id }) {
-            let chatVC = ChatViewController(chat: chat)
-            navigationController?.pushViewController(chatVC, animated: true)
-        }
-    }
-
-    @objc private func calificarTapped() {
-        let calVC = CalificarViewController(solicitud: solicitud)
-        navigationController?.pushViewController(calVC, animated: true)
     }
 }

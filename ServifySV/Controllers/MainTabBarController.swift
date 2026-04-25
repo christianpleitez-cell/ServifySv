@@ -2,8 +2,6 @@ import UIKit
 
 class MainTabBarController: UITabBarController {
 
-    private let isProfessional = false
-
     override func viewDidLoad() {
         super.viewDidLoad()
         setupTabs()
@@ -11,7 +9,7 @@ class MainTabBarController: UITabBarController {
     }
 
     private func setupTabs() {
-        if isProfessional {
+        if AuthManager.shared.isProfessional {
             setupProfessionalTabs()
         } else {
             setupClientTabs()

@@ -3,9 +3,9 @@ import UIKit
 class ClienteProfileViewController: UIViewController {
 
     // MARK: - Properties
-    private let usuario: User = MockData.usuarioActual
-    private var telefono: String = "+52 555 1234 5678"
-    private var ubicacion: String = "Ciudad de México, CDMX"
+    private var usuario: User?
+    private var telefono: String = ""
+    private var ubicacion: String = ""
 
     // MARK: - UI Components
     private let scrollView = UIScrollView()
@@ -120,12 +120,12 @@ class ClienteProfileViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        configure()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = true
+        configure()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -221,17 +221,20 @@ class ClienteProfileViewController: UIViewController {
     }
 
     private func configure() {
-        let initials = usuario.nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
-        avatarLabel.text = String(initials.prefix(2))
-        nombreLabel.text = usuario.nombre
+        guard let currentUser = AuthManager.shared.currentUser else { return }
 
+        let initials = currentUser.nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
+        avatarLabel.text = String(initials.prefix(2))
+        nombreLabel.text = currentUser.nombre
+
+        contactoStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         addContactoItems()
     }
 
     private func addContactoItems() {
         let items = [
             ("📞", telefono),
-            ("📧", usuario.correo),
+            ("📧", AuthManager.shared.currentUser?.correo ?? ""),
             ("📍", ubicacion)
         ]
 
@@ -253,6 +256,7 @@ class ClienteProfileViewController: UIViewController {
     }
 
     @objc private func logoutTapped() {
+        AuthManager.shared.clearSession()
         navigationController?.popToRootViewController(animated: false)
         let loginVC = UINavigationController(rootViewController: LoginViewController())
         loginVC.modalPresentationStyle = .fullScreen
@@ -260,41 +264,66 @@ class ClienteProfileViewController: UIViewController {
     }
 
     private func presentEditModal() {
+        guard let currentUser = AuthManager.shared.currentUser else { return }
+
         let alert = UIAlertController(title: "Editar Perfil", message: nil, preferredStyle: .alert)
         alert.view.tintColor = .systemBlue
 
-        let nombreField = UITextField()
-        nombreField.placeholder = "Nombre"
-        nombreField.text = usuario.nombre
-        nombreField.borderStyle = .roundedRect
-        alert.addTextField { _ in }
-        alert.textFields?[0] = nombreField
+        alert.addTextField { field in
+            field.placeholder = "Nombre"
+            field.text = currentUser.nombre
+        }
 
-        let telefonoField = UITextField()
-        telefonoField.placeholder = "Teléfono"
-        telefonoField.text = telefono
-        telefonoField.borderStyle = .roundedRect
-        alert.addTextField { _ in }
-        alert.textFields?[1] = telefonoField
+        alert.addTextField { field in
+            field.placeholder = "Teléfono"
+            field.text = ""
+        }
 
-        let emailField = UITextField()
-        emailField.placeholder = "Email"
-        emailField.text = usuario.correo
-        emailField.borderStyle = .roundedRect
-        alert.addTextField { _ in }
-        alert.textFields?[2] = emailField
+        alert.addTextField { field in
+            field.placeholder = "Ubicación"
+            field.text = ""
+        }
 
-        alert.addAction(UIAlertAction(title: "Guardar Cambios", style: .default) { _ in
-            if let nombre = nombreField.text, !nombre.isEmpty {
-                // Actualizar datos (en un escenario real, se guardaría en el backend)
+        alert.addAction(UIAlertAction(title: "Guardar Cambios", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            guard let nombre = alert.textFields?[0].text, !nombre.isEmpty else {
+                self.showAlert(title: "Error", message: "El nombre no puede estar vacío")
+                return
             }
-            if let tel = telefonoField.text {
-                self.telefono = tel
+
+            let telefono = alert.textFields?[1].text ?? ""
+            let ubicacion = alert.textFields?[2].text ?? ""
+
+            self.editarButton.isEnabled = false
+            let originalTitle = self.editarButton.title(for: .normal)
+            self.editarButton.setTitle("Guardando...", for: .normal)
+
+            APIManager.shared.updatePerfil(userId: currentUser.id, nombre: nombre, telefono: telefono.isEmpty ? nil : telefono, correo: nil) { [weak self] result in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    self.editarButton.isEnabled = true
+                    self.editarButton.setTitle(originalTitle, for: .normal)
+
+                    switch result {
+                    case .success:
+                        self.configure()
+                        self.showAlert(title: "Éxito", message: "Perfil actualizado correctamente")
+
+                    case .failure(let error):
+                        self.showAlert(title: "Error", message: error.localizedDescription)
+                    }
+                }
             }
         })
 
         alert.addAction(UIAlertAction(title: "Cancelar", style: .cancel))
 
+        present(alert, animated: true)
+    }
+
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
 }

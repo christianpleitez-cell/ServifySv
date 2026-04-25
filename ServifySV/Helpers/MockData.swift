@@ -23,14 +23,14 @@ struct MockData {
 
     // MARK: - Servicios Mock
     static let servicios: [Servicio] = [
-        Servicio(id: 1, idProfesional: 1, nombreServicio: "Instalación eléctrica", categoria: .electricidad, precioReferencia: 25.00, disponibilidad: "Lunes a Viernes"),
-        Servicio(id: 2, idProfesional: 1, nombreServicio: "Reparación de cortocircuitos", categoria: .electricidad, precioReferencia: 15.00, disponibilidad: "Todos los días"),
-        Servicio(id: 3, idProfesional: 2, nombreServicio: "Reparación de tuberías", categoria: .plomeria, precioReferencia: 20.00, disponibilidad: "Lunes a Sábado"),
-        Servicio(id: 4, idProfesional: 2, nombreServicio: "Instalación de inodoros", categoria: .plomeria, precioReferencia: 35.00, disponibilidad: "Lunes a Viernes"),
-        Servicio(id: 5, idProfesional: 3, nombreServicio: "Pintura interior", categoria: .pintura, precioReferencia: 40.00, disponibilidad: "Lunes a Sábado"),
-        Servicio(id: 6, idProfesional: 4, nombreServicio: "Construcción de paredes", categoria: .albanileria, precioReferencia: 60.00, disponibilidad: "Lunes a Viernes"),
-        Servicio(id: 7, idProfesional: 5, nombreServicio: "Poda de árboles", categoria: .jardineria, precioReferencia: 18.00, disponibilidad: "Fines de semana"),
-        Servicio(id: 8, idProfesional: 6, nombreServicio: "Limpieza profunda del hogar", categoria: .limpieza, precioReferencia: 30.00, disponibilidad: "Todos los días"),
+        Servicio(id: 1, idProfesional: 1, nombreServicio: "Instalación eléctrica", categoria: "electricidad", precioReferencia: 25.00, disponibilidad: true),
+        Servicio(id: 2, idProfesional: 1, nombreServicio: "Reparación de cortocircuitos", categoria: "electricidad", precioReferencia: 15.00, disponibilidad: true),
+        Servicio(id: 3, idProfesional: 2, nombreServicio: "Reparación de tuberías", categoria: "plomeria", precioReferencia: 20.00, disponibilidad: true),
+        Servicio(id: 4, idProfesional: 2, nombreServicio: "Instalación de inodoros", categoria: "plomeria", precioReferencia: 35.00, disponibilidad: true),
+        Servicio(id: 5, idProfesional: 3, nombreServicio: "Pintura interior", categoria: "pintura", precioReferencia: 40.00, disponibilidad: true),
+        Servicio(id: 6, idProfesional: 4, nombreServicio: "Construcción de paredes", categoria: "albanileria", precioReferencia: 60.00, disponibilidad: true),
+        Servicio(id: 7, idProfesional: 5, nombreServicio: "Poda de árboles", categoria: "jardineria", precioReferencia: 18.00, disponibilidad: false),
+        Servicio(id: 8, idProfesional: 6, nombreServicio: "Limpieza profunda del hogar", categoria: "limpieza", precioReferencia: 30.00, disponibilidad: true),
     ]
 
     // MARK: - Profesionales Mock
@@ -117,18 +117,18 @@ struct MockData {
             cliente: usuarioCliente,
             servicio: servicios[0],
             profesional: profesionales[0],
-            fechaSolicitud: Calendar.current.date(byAdding: .day, value: -3, to: Date())!,
-            estado: .completada,
+            fechaSolicitud: "2026-04-21",
+            estado: "completada",
             descripcion: "Necesito instalación eléctrica en sala y dos habitaciones.",
-            calificacion: calificaciones[0]
+            calificacion: nil
         ),
         Solicitud(
             id: 2,
             cliente: usuarioCliente,
             servicio: servicios[2],
             profesional: profesionales[1],
-            fechaSolicitud: Calendar.current.date(byAdding: .day, value: -1, to: Date())!,
-            estado: .aceptada,
+            fechaSolicitud: "2026-04-23",
+            estado: "aceptada",
             descripcion: "Tubería con fuga en el baño principal.",
             calificacion: nil
         ),
@@ -137,8 +137,8 @@ struct MockData {
             cliente: usuarioCliente,
             servicio: servicios[4],
             profesional: profesionales[2],
-            fechaSolicitud: Date(),
-            estado: .pendiente,
+            fechaSolicitud: "2026-04-24",
+            estado: "pendiente",
             descripcion: "Pintura de sala y comedor, paredes blancas.",
             calificacion: nil
         ),
@@ -150,18 +150,18 @@ struct MockData {
             id: 1,
             solicitud: solicitudes[0],
             mensajes: [
-                Mensaje(id: 1, idChat: 1, remitente: usuarioCliente, contenido: "Hola, necesito instalar electricidad en la sala.", fechaEnvio: Calendar.current.date(byAdding: .hour, value: -2, to: Date())!, esPropio: true),
-                Mensaje(id: 2, idChat: 1, remitente: profesionales[0].usuario, contenido: "Buenos días, con gusto le ayudo. ¿A qué hora le queda bien?", fechaEnvio: Calendar.current.date(byAdding: .hour, value: -1, to: Date())!, esPropio: false),
-                Mensaje(id: 3, idChat: 1, remitente: usuarioCliente, contenido: "Mañana a las 9am si puede.", fechaEnvio: Calendar.current.date(byAdding: .minute, value: -30, to: Date())!, esPropio: true),
-                Mensaje(id: 4, idChat: 1, remitente: profesionales[0].usuario, contenido: "Perfecto, ahí estaré. Le mando mi ubicación cuando salga.", fechaEnvio: Calendar.current.date(byAdding: .minute, value: -15, to: Date())!, esPropio: false),
+                Mensaje(id: 1, idSolicitud: 1, remitente: usuarioCliente, contenido: "Hola, necesito instalar electricidad en la sala.", fechaEnvio: "10:00", esPropio: true),
+                Mensaje(id: 2, idSolicitud: 1, remitente: profesionales[0].usuario, contenido: "Buenos días, con gusto le ayudo. ¿A qué hora le queda bien?", fechaEnvio: "11:00", esPropio: false),
+                Mensaje(id: 3, idSolicitud: 1, remitente: usuarioCliente, contenido: "Mañana a las 9am si puede.", fechaEnvio: "11:30", esPropio: true),
+                Mensaje(id: 4, idSolicitud: 1, remitente: profesionales[0].usuario, contenido: "Perfecto, ahí estaré. Le mando mi ubicación cuando salga.", fechaEnvio: "11:45", esPropio: false),
             ]
         ),
         Chat(
             id: 2,
             solicitud: solicitudes[1],
             mensajes: [
-                Mensaje(id: 5, idChat: 2, remitente: usuarioCliente, contenido: "Tengo una fuga en el baño, ¿cuándo puede venir?", fechaEnvio: Calendar.current.date(byAdding: .hour, value: -5, to: Date())!, esPropio: true),
-                Mensaje(id: 6, idChat: 2, remitente: profesionales[1].usuario, contenido: "Puedo ir esta tarde a las 3pm.", fechaEnvio: Calendar.current.date(byAdding: .hour, value: -4, to: Date())!, esPropio: false),
+                Mensaje(id: 5, idSolicitud: 2, remitente: usuarioCliente, contenido: "Tengo una fuga en el baño, ¿cuándo puede venir?", fechaEnvio: "09:00", esPropio: true),
+                Mensaje(id: 6, idSolicitud: 2, remitente: profesionales[1].usuario, contenido: "Puedo ir esta tarde a las 3pm.", fechaEnvio: "10:00", esPropio: false),
             ]
         ),
     ]
@@ -174,8 +174,8 @@ struct MockData {
 
     // MARK: - Servicios del profesional actual
     static let serviciosProfesional: [Servicio] = [
-        Servicio(id: 1, idProfesional: 1, nombreServicio: "Construcción y Remodelación", categoria: .albanileria, precioReferencia: 500.00, disponibilidad: "Lunes a Viernes"),
-        Servicio(id: 2, idProfesional: 1, nombreServicio: "Reparación de Estructuras", categoria: .albanileria, precioReferencia: 350.00, disponibilidad: "Lunes a Sábado"),
+        Servicio(id: 1, idProfesional: 1, nombreServicio: "Construcción y Remodelación", categoria: "albanileria", precioReferencia: 500.00, disponibilidad: true),
+        Servicio(id: 2, idProfesional: 1, nombreServicio: "Reparación de Estructuras", categoria: "albanileria", precioReferencia: 350.00, disponibilidad: true),
     ]
 
     // MARK: - Usuario actual simulado

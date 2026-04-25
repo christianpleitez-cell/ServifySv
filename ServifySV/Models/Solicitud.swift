@@ -1,20 +1,31 @@
 import Foundation
 
-enum EstadoSolicitud: String {
-    case pendiente = "Pendiente"
-    case aceptada = "Aceptada"
-    case enProgreso = "En Progreso"
-    case completada = "Completada"
-    case cancelada = "Cancelada"
+enum EstadoSolicitud: String, Codable {
+    case pendiente = "pendiente"
+    case aceptada = "aceptada"
+    case rechazada = "rechazada"
+    case completada = "completada"
+    case cancelada = "cancelada"
 }
 
-struct Solicitud {
+struct Solicitud: Codable {
     let id: Int
-    let cliente: User
-    let servicio: Servicio
-    let profesional: Profesional
-    var fechaSolicitud: Date
-    var estado: EstadoSolicitud
+    let cliente: User?
+    let servicio: Servicio?
+    let profesional: Profesional?
+    var fechaSolicitud: String?
+    var estado: String
     var descripcion: String
-    var calificacion: Calificacion?
+    var calificacion: Resena?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "id_solicitud"
+        case cliente
+        case servicio
+        case profesional
+        case fechaSolicitud = "fecha"
+        case estado
+        case descripcion
+        case calificacion
+    }
 }
