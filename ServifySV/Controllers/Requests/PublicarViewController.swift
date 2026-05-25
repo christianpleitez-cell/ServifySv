@@ -14,6 +14,9 @@ class PublicarViewController: UIViewController {
     private var descripcionTextView: UITextView!
     private var precioTextField: UITextField!
 
+    private let categoriaPicker = UIPickerView()
+    private let categorias = ["electricidad", "plomeria", "albanileria", "pintura", "carpinteria", "limpieza", "jardineria", "otro"]
+
     private lazy var tituloField = createTextField(textField: &tituloTextField, placeholder: "Ej: Construcción y Remodelación", label: "Título del servicio")
     private lazy var categoriaField = createDropdown(textField: &categoriaTextField, label: "Categoría", placeholder: "Selecciona una categoría")
     private lazy var descripcionField = createTextView(textView: &descripcionTextView, placeholder: "Describe tu experiencia, especialidades y qué servicios ofreces...", label: "Descripción")
@@ -34,6 +37,7 @@ class PublicarViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        setupCategoriaPicker()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -178,6 +182,25 @@ class PublicarViewController: UIViewController {
         fotoUploadView.addGestureRecognizer(tap)
     }
 
+    private func setupCategoriaPicker() {
+        categoriaPicker.delegate = self
+        categoriaPicker.dataSource = self
+        categoriaTextField.inputView = categoriaPicker
+
+        let toolbar = UIToolbar()
+        toolbar.sizeToFit()
+        let done = UIBarButtonItem(title: "Listo", style: .done, target: self, action: #selector(categoriaPickerDone))
+        let space = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+        toolbar.setItems([space, done], animated: false)
+        categoriaTextField.inputAccessoryView = toolbar
+    }
+
+    @objc private func categoriaPickerDone() {
+        let idx = categoriaPicker.selectedRow(inComponent: 0)
+        categoriaTextField.text = categorias[idx].capitalized
+        categoriaTextField.resignFirstResponder()
+    }
+
     @objc private func subirFotoTapped() {
         let alert = UIAlertController(title: "Subir Foto", message: "Selecciona una opción", preferredStyle: .actionSheet)
         alert.addAction(UIAlertAction(title: "Cámara", style: .default))
@@ -246,7 +269,19 @@ class PublicarViewController: UIViewController {
     }
 }
 
-private func createTextField(textField: inout UITextField?, placeholder: String, label: String, keyboardType: UIKeyboardType = .default) -> UIView {
+extension PublicarViewController: UIPickerViewDelegate, UIPickerViewDataSource {
+    func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
+
+    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+        categorias.count
+    }
+
+    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+        categorias[row].capitalized
+    }
+}
+
+func createTextField(textField: inout UITextField?, placeholder: String, label: String, keyboardType: UIKeyboardType = .default) -> UIView {
     let container = UIView()
     container.translatesAutoresizingMaskIntoConstraints = false
 
@@ -287,7 +322,7 @@ private func createTextField(textField: inout UITextField?, placeholder: String,
     return container
 }
 
-private func createDropdown(textField: inout UITextField?, label: String, placeholder: String) -> UIView {
+func createDropdown(textField: inout UITextField?, label: String, placeholder: String) -> UIView {
     let container = UIView()
     container.translatesAutoresizingMaskIntoConstraints = false
 
@@ -333,7 +368,7 @@ private func createDropdown(textField: inout UITextField?, label: String, placeh
     return container
 }
 
-private func createTextView(textView: inout UITextView?, placeholder: String, label: String) -> UIView {
+func createTextView(textView: inout UITextView?, placeholder: String, label: String) -> UIView {
     let container = UIView()
     container.translatesAutoresizingMaskIntoConstraints = false
 

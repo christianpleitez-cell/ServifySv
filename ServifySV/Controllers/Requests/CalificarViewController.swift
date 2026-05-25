@@ -4,6 +4,7 @@ class CalificarViewController: UIViewController {
 
     // MARK: - Properties
     private let solicitud: Solicitud
+    private var resena: Resena?
     private var puntuacionSeleccionada: Int = 5
 
     // MARK: - UI Components
@@ -66,8 +67,9 @@ class CalificarViewController: UIViewController {
     }()
 
     // MARK: - Init
-    init(solicitud: Solicitud) {
+    init(solicitud: Solicitud, resena: Resena? = nil) {
         self.solicitud = solicitud
+        self.resena = resena
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -78,6 +80,13 @@ class CalificarViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         configure()
+        if let r = resena {
+            title = "Editar Calificación"
+            titleLabel.text = "Editar Calificación"
+            puntuacionSeleccionada = r.calificacion
+            comentarioTextView.text = r.comentario ?? ""
+            enviarButton.setTitle("Actualizar Calificación", for: .normal)
+        }
         updateStars()
     }
 
@@ -156,31 +165,59 @@ class CalificarViewController: UIViewController {
         let originalTitle = enviarButton.title(for: .normal)
         enviarButton.setTitle("Enviando...", for: .normal)
 
-        APIManager.shared.createResena(
-            idSolicitud: solicitud.id,
-            idCliente: clienteId,
-            idProfesional: solicitud.profesional?.id ?? 0,
-            calificacion: puntuacionSeleccionada,
-            comentario: comentario
-        ) { [weak self] result in
-            DispatchQueue.main.async {
-                self?.enviarButton.isEnabled = true
-                self?.enviarButton.setTitle(originalTitle, for: .normal)
-
-                switch result {
-                case .success:
-                    let alert = UIAlertController(title: "¡Gracias por tu reseña!", message: "Tu calificación de \(self?.puntuacionSeleccionada ?? 5) estrella(s) ha sido enviada.", preferredStyle: .alert)
-                    alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
-                        self?.navigationController?.popToRootViewController(animated: true)
-                    })
-                    self?.present(alert, animated: true)
-
-                case .failure(let error):
-                    let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self?.present(alert, animated: true)
+        if let r = resena {
+            APIManager.shared.updateResena(
+                resenaId: r.id,
+                calificacion: puntuacionSeleccionada,
+                comentario: comentario
+            ) { [weak self] result in
+                DispatchQueue.main.async {
+                    self?.enviarButton.isEnabled = true
+                    self?.enviarButton.setTitle(originalTitle, for: .normal)
+                    switch result {
+                    case .success:
+                        self?.showSuccessAndPop(stars: self?.puntuacionSeleccionada ?? 5, isEdit: true)
+                    case .failure(let error):
+                        self?.showError(error.localizedDescription)
+                    }
+                }
+            }
+        } else {
+            APIManager.shared.createResena(
+                idSolicitud: solicitud.id,
+                idCliente: clienteId,
+                idProfesional: solicitud.profesional?.id ?? 0,
+                calificacion: puntuacionSeleccionada,
+                comentario: comentario
+            ) { [weak self] result in
+                DispatchQueue.main.async {
+                    self?.enviarButton.isEnabled = true
+                    self?.enviarButton.setTitle(originalTitle, for: .normal)
+                    switch result {
+                    case .success:
+                        self?.showSuccessAndPop(stars: self?.puntuacionSeleccionada ?? 5, isEdit: false)
+                    case .failure(let error):
+                        self?.showError(error.localizedDescription)
+                    }
                 }
             }
         }
+    }
+
+    private func showSuccessAndPop(stars: Int, isEdit: Bool) {
+        let msg = isEdit
+            ? "Tu calificación de \(stars) estrella(s) ha sido actualizada."
+            : "Tu calificación de \(stars) estrella(s) ha sido enviada."
+        let alert = UIAlertController(title: isEdit ? "¡Calificación actualizada!" : "¡Gracias por tu reseña!", message: msg, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
+            self?.navigationController?.popViewController(animated: true)
+        })
+        present(alert, animated: true)
+    }
+
+    private func showError(_ message: String) {
+        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 }

@@ -43,6 +43,7 @@
 		EDB5618BC70A8D36C6BA293F /* SolicitudCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD54AAA2AA75FA935E7FA637 /* SolicitudCell.swift */; };
 		F77AC1CF6B2B1BB7D6E49C7C /* ChatViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEA9036DE13E8674620AD32E /* ChatViewController.swift */; };
 		FEDA7B39E61846607740AA4E /* Profesional.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F029C7E1B03BD5F0E7F7B21 /* Profesional.swift */; };
+		5C6D7E8F0A1B2C3D4E5F6A7B /* EditarServicioViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A4B5C6D7E8F0A1B2C3D4E5F /* EditarServicioViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -60,6 +61,7 @@
 		D1D2D3D4D5D6D7D8D9D0DDDE /* ProfesionalHomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfesionalHomeViewController.swift; sourceTree = "<group>"; };
 		F1F2F3F4F5F6F7F8F9F0FFF0 /* ProfesionalProfileViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfesionalProfileViewController.swift; sourceTree = "<group>"; };
 		2A3B4C5D6E7F8A9B0C1D2E3F /* PublicarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicarViewController.swift; sourceTree = "<group>"; };
+		3A4B5C6D7E8F0A1B2C3D4E5F /* EditarServicioViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditarServicioViewController.swift; sourceTree = "<group>"; };
 		491D835D3555711088542151 /* Calificacion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Calificacion.swift; sourceTree = "<group>"; };
 		DD5B2C3D4E5F6A7B8C9D0E1F /* Resena.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Resena.swift; sourceTree = "<group>"; };
 		58C30DB47E50B0977BF3F71C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -92,6 +94,7 @@
 				19510F71463E50EE6ED0D559 /* CalificarViewController.swift */,
 				E21620C0B7B9D58929DDCEBE /* NuevaSolicitudViewController.swift */,
 				2A3B4C5D6E7F8A9B0C1D2E3F /* PublicarViewController.swift */,
+				3A4B5C6D7E8F0A1B2C3D4E5F /* EditarServicioViewController.swift */,
 				8A5607C6705CBC6C166E867E /* SolicitudDetailViewController.swift */,
 				AC524497F51A1BFFBEA65816 /* SolicitudesViewController.swift */,
 			);
@@ -345,6 +348,7 @@
 				C1C2C3C4C5C6C7C8C9C0CCCD /* ProfesionalHomeViewController.swift in Sources */,
 				E1E2E3E4E5E6E7E8E9E0EEEF /* ProfesionalProfileViewController.swift in Sources */,
 				1A2B3C4D5E6F7A8B9C0D1E2F /* PublicarViewController.swift in Sources */,
+				5C6D7E8F0A1B2C3D4E5F6A7B /* EditarServicioViewController.swift in Sources */,
 				CB4387800F354AE5EBCF4571 /* MockData.swift in Sources */,
 				52F568BAD8386DD99271F2A8 /* NuevaSolicitudViewController.swift in Sources */,
 				CC4A1B2C3D4E5F6A7B8C9D0E /* Resena.swift in Sources */,

@@ -169,7 +169,30 @@ class ProfesionalProfileViewController: UIViewController {
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
         ])
 
+        cameraButton.addTarget(self, action: #selector(cameraButtonTapped), for: .touchUpInside)
+
         setupContent()
+    }
+
+    @objc private func cameraButtonTapped() {
+        let alert = UIAlertController(title: "Foto de perfil", message: "Selecciona una opción", preferredStyle: .actionSheet)
+        alert.addAction(UIAlertAction(title: "Cámara", style: .default) { [weak self] _ in
+            guard UIImagePickerController.isSourceTypeAvailable(.camera) else { return }
+            let picker = UIImagePickerController()
+            picker.sourceType = .camera
+            picker.allowsEditing = true
+            picker.delegate = self
+            self?.present(picker, animated: true)
+        })
+        alert.addAction(UIAlertAction(title: "Galería", style: .default) { [weak self] _ in
+            let picker = UIImagePickerController()
+            picker.sourceType = .photoLibrary
+            picker.allowsEditing = true
+            picker.delegate = self
+            self?.present(picker, animated: true)
+        })
+        alert.addAction(UIAlertAction(title: "Cancelar", style: .cancel))
+        present(alert, animated: true)
     }
 
     private func setupContent() {
@@ -470,5 +493,33 @@ class ProfesionalProfileViewController: UIViewController {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
+    }
+}
+
+extension ProfesionalProfileViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+        picker.dismiss(animated: true)
+        guard let image = info[.editedImage] as? UIImage ?? info[.originalImage] as? UIImage else { return }
+        let initials = avatarLabel.text ?? ""
+        avatarLabel.text = ""
+        let imageView = UIImageView(image: image)
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 50
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.tag = 999
+        avatarView.subviews.filter { $0.tag == 999 }.forEach { $0.removeFromSuperview() }
+        avatarView.addSubview(imageView)
+        NSLayoutConstraint.activate([
+            imageView.topAnchor.constraint(equalTo: avatarView.topAnchor),
+            imageView.leadingAnchor.constraint(equalTo: avatarView.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: avatarView.trailingAnchor),
+            imageView.bottomAnchor.constraint(equalTo: avatarView.bottomAnchor),
+        ])
+        _ = initials
+    }
+
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
     }
 }

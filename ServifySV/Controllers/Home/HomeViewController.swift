@@ -3,8 +3,10 @@ import UIKit
 class HomeViewController: UIViewController {
 
     // MARK: - Properties
-    private var profesionales: [Profesional] = MockData.profesionales
+    private var profesionales: [Profesional] = []
+    private var profesionalesFiltrados: [Profesional] = []
     private var categoriaSeleccionada: CategoriaServicio? = nil
+    private var searchText: String = ""
 
     // MARK: - UI Components
     private let searchBar: UISearchBar = {
@@ -125,6 +127,7 @@ class HomeViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(ProfesionalCell.self, forCellReuseIdentifier: ProfesionalCell.identifier)
+        searchBar.delegate = self
     }
 
     private func setupCollectionView() {
@@ -140,10 +143,10 @@ class HomeViewController: UIViewController {
                     switch result {
                     case .success(let response):
                         self?.profesionales = response.profesionales
-                        self?.tableView.reloadData()
+                        self?.applySearch()
                     case .failure:
                         self?.profesionales = []
-                        self?.tableView.reloadData()
+                        self?.applySearch()
                     }
                 }
             }
@@ -153,14 +156,29 @@ class HomeViewController: UIViewController {
                     switch result {
                     case .success(let response):
                         self?.profesionales = response.profesionales
-                        self?.tableView.reloadData()
+                        self?.applySearch()
                     case .failure:
                         self?.profesionales = []
-                        self?.tableView.reloadData()
+                        self?.applySearch()
                     }
                 }
             }
         }
+    }
+
+    private func applySearch() {
+        if searchText.isEmpty {
+            profesionalesFiltrados = profesionales
+        } else {
+            let q = searchText.lowercased()
+            profesionalesFiltrados = profesionales.filter { p in
+                let nombre = p.usuario?.nombre.lowercased() ?? ""
+                let especialidad = p.especialidad?.lowercased() ?? ""
+                let servicio = p.servicios?.first?.nombreServicio.lowercased() ?? ""
+                return nombre.contains(q) || especialidad.contains(q) || servicio.contains(q)
+            }
+        }
+        tableView.reloadData()
     }
 }
 
@@ -168,12 +186,12 @@ class HomeViewController: UIViewController {
 extension HomeViewController: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        profesionales.count
+        profesionalesFiltrados.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: ProfesionalCell.identifier, for: indexPath) as! ProfesionalCell
-        cell.configure(with: profesionales[indexPath.row])
+        cell.configure(with: profesionalesFiltrados[indexPath.row])
         return cell
     }
 
@@ -183,7 +201,7 @@ extension HomeViewController: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        let detailVC = ProfesionalDetailViewController(profesional: profesionales[indexPath.row])
+        let detailVC = ProfesionalDetailViewController(profesional: profesionalesFiltrados[indexPath.row])
         navigationController?.pushViewController(detailVC, animated: true)
     }
 }
@@ -214,5 +232,24 @@ extension HomeViewController: UICollectionViewDataSource, UICollectionViewDelega
         }
         collectionView.reloadData()
         loadProfesionales()
+    }
+}
+
+// MARK: - UISearchBarDelegate
+extension HomeViewController: UISearchBarDelegate {
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        self.searchText = searchText
+        applySearch()
+    }
+
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
+    }
+
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.text = ""
+        searchText = ""
+        applySearch()
+        searchBar.resignFirstResponder()
     }
 }

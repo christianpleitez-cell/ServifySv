@@ -358,12 +358,18 @@ class ProfesionalDetailViewController: UIViewController {
     }
 
     private func addContactInfo() {
-        let items = [
-            ("📞", "+52 555 9876 5432"),
-            ("📧", "juan.pérez@email.com"),
-            ("📍", "Ciudad de México, CDMX"),
-            ("⏰", "\(profesional.experiencia ?? 0)+ años de experiencia")
-        ]
+        var items: [(String, String)] = []
+
+        if let telefono = profesional.usuario?.telefono, !telefono.isEmpty {
+            items.append(("📞", telefono))
+        }
+        if let correo = profesional.usuario?.correo, !correo.isEmpty {
+            items.append(("📧", correo))
+        }
+        if let ubicacion = profesional.usuario?.ubicacion, !ubicacion.isEmpty {
+            items.append(("📍", ubicacion))
+        }
+        items.append(("⏰", "\(profesional.experiencia ?? 0)+ años de experiencia"))
 
         for (icon, text) in items {
             let label = UILabel()

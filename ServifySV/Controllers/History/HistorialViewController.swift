@@ -63,7 +63,7 @@ class HistorialViewController: UIViewController {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let response):
-                    self?.trabajos = response.historial.compactMap { $0.solicitud }
+                    self?.trabajos = response.historial
                     self?.trabajosTableView.reloadData()
                 case .failure:
                     self?.trabajos = []
@@ -95,6 +95,23 @@ class HistorialViewController: UIViewController {
                     self?.ingresosPorCategoria = response.ingresosPorCategoria
                     self?.ingresosPorMes = response.ingresosPorMes
                     self?.updateIngresosTab()
+                case .failure:
+                    break
+                }
+            }
+        }
+
+        APIManager.shared.getResenasProfesional(profesionalId: userId) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    let stats = response.estadisticas
+                    if stats.totalResenas == 0 {
+                        self?.calificacionRatingLabel?.text = "Sin reseñas"
+                    } else {
+                        let stars = String(repeating: "⭐", count: Int(stats.calificacionPromedio.rounded()))
+                        self?.calificacionRatingLabel?.text = String(format: "%.1f %@", stats.calificacionPromedio, stars)
+                    }
                 case .failure:
                     break
                 }
@@ -206,16 +223,12 @@ class HistorialViewController: UIViewController {
         resumenStack = rs
         ingresosContentView.addSubview(rs)
 
-        let meses = [
-            ("Febrero 2026", "4 trabajos", "+$1800"),
-            ("Enero 2026", "6 trabajos", "+$3,200"),
-            ("Diciembre 2025", "5 trabajos", "+$2,800")
-        ]
-
-        for (mes, trabajos, monto) in meses {
-            let row = createResumenRow(mes: mes, trabajos: trabajos, monto: monto)
-            rs.addArrangedSubview(row)
-        }
+        let emptyMesesLabel = UILabel()
+        emptyMesesLabel.text = "Sin datos disponibles"
+        emptyMesesLabel.font = UIFont.systemFont(ofSize: 14)
+        emptyMesesLabel.textColor = .secondaryLabel
+        emptyMesesLabel.textAlignment = .center
+        rs.addArrangedSubview(emptyMesesLabel)
 
         // Ingresos por Categoría
         let categoriasTitle = UILabel()
@@ -231,17 +244,12 @@ class HistorialViewController: UIViewController {
         categoriasStack = cs
         ingresosContentView.addSubview(cs)
 
-        let categorias = [
-            ("Instalaciones Eléctricas", "$400", 1),
-            ("Muebles a Medida", "$600", 1),
-            ("Pintura Residencial", "$300", 1),
-            ("Construcción y Remodelación", "$500", 1)
-        ]
-
-        for (categoria, monto, trabajos) in categorias {
-            let row = createCategoriaRow(categoria: categoria, monto: monto, trabajos: trabajos)
-            cs.addArrangedSubview(row)
-        }
+        let emptyCategoriasLabel = UILabel()
+        emptyCategoriasLabel.text = "Sin datos disponibles"
+        emptyCategoriasLabel.font = UIFont.systemFont(ofSize: 14)
+        emptyCategoriasLabel.textColor = .secondaryLabel
+        emptyCategoriasLabel.textAlignment = .center
+        cs.addArrangedSubview(emptyCategoriasLabel)
 
         NSLayoutConstraint.activate([
             ingresosCard.topAnchor.constraint(equalTo: ingresosContentView.topAnchor, constant: 16),
@@ -508,15 +516,34 @@ extension HistorialViewController: UITableViewDataSource, UITableViewDelegate {
         let precioStr = String(format: "$%.0f", trabajo.servicio?.precioReferencia ?? 0)
         let fechaStr = trabajo.fechaSolicitud ?? ""
         let titulo = trabajo.servicio?.nombreServicio ?? ""
+        let comentario = "Toca para calificar"
 
-        let rating = "⭐⭐⭐⭐⭐"
-        let comentario = "Trabajo completado exitosamente"
-
-        cell.configure(titulo: titulo, profesional: profesionalNombre, precio: precioStr, fecha: fechaStr, rating: rating, comentario: comentario)
+        cell.configure(titulo: titulo, profesional: profesionalNombre, precio: precioStr, fecha: fechaStr, rating: "", comentario: comentario)
         return cell
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         160
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        guard !AuthManager.shared.isProfessional else { return }
+
+        let solicitud = trabajos[indexPath.row]
+
+        APIManager.shared.getResenaBySolicitud(solicitudId: solicitud.id) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                switch result {
+                case .success(let response):
+                    let vc = CalificarViewController(solicitud: solicitud, resena: response.resena)
+                    self.navigationController?.pushViewController(vc, animated: true)
+                case .failure:
+                    let vc = CalificarViewController(solicitud: solicitud)
+                    self.navigationController?.pushViewController(vc, animated: true)
+                }
+            }
+        }
     }
 }

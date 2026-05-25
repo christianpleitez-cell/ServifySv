@@ -2,7 +2,7 @@ import UIKit
 
 class ProfesionalHomeViewController: UIViewController {
 
-    private var servicios: [Servicio] = MockData.serviciosProfesional
+    private var servicios: [Servicio] = []
 
     private let tableView: UITableView = {
         let tv = UITableView()
@@ -146,5 +146,51 @@ extension ProfesionalHomeViewController: UITableViewDataSource, UITableViewDeleg
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        let servicio = servicios[indexPath.row]
+
+        let sheet = UIAlertController(title: servicio.nombreServicio, message: nil, preferredStyle: .actionSheet)
+
+        sheet.addAction(UIAlertAction(title: "Editar servicio", style: .default) { [weak self] _ in
+            let vc = EditarServicioViewController(servicio: servicio)
+            self?.navigationController?.pushViewController(vc, animated: true)
+        })
+
+        sheet.addAction(UIAlertAction(title: "Eliminar servicio", style: .destructive) { [weak self] _ in
+            self?.confirmEliminar(servicio: servicio)
+        })
+
+        sheet.addAction(UIAlertAction(title: "Cancelar", style: .cancel))
+        present(sheet, animated: true)
+    }
+}
+
+extension ProfesionalHomeViewController {
+
+    private func confirmEliminar(servicio: Servicio) {
+        let alert = UIAlertController(
+            title: "Eliminar servicio",
+            message: "¿Seguro que deseas eliminar \"\(servicio.nombreServicio)\"? Esta acción no se puede deshacer.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Eliminar", style: .destructive) { [weak self] _ in
+            APIManager.shared.deleteServicio(servicioId: servicio.id) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success:
+                        self?.loadServicios()
+                    case .failure(let error):
+                        self?.showAlert(title: "Error", message: error.localizedDescription)
+                    }
+                }
+            }
+        })
+        alert.addAction(UIAlertAction(title: "Cancelar", style: .cancel))
+        present(alert, animated: true)
+    }
+
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 }

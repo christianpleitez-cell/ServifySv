@@ -299,6 +299,11 @@ final class APIManager {
     func getResenaBySolicitud(solicitudId: Int, completion: @escaping (Result<ResenaResponse, APIError>) -> Void) {
         request(method: "GET", path: "/resenas/solicitud/\(solicitudId)", requiresAuth: true, completion: completion)
     }
+
+    func updateResena(resenaId: Int, calificacion: Int, comentario: String, completion: @escaping (Result<CreateResenaResponse, APIError>) -> Void) {
+        let body: [String: Any] = ["calificacion": calificacion, "comentario": comentario]
+        request(method: "PUT", path: "/resenas/\(resenaId)", body: body, requiresAuth: true, completion: completion)
+    }
 }
 
 // MARK: - Response Models
@@ -398,7 +403,7 @@ struct ChatsResponse: Codable {
 
 struct HistorialClienteResponse: Codable {
     let ok: Bool
-    let historial: [Historial]
+    let historial: [Solicitud]
 }
 
 struct TrabajosProfesionalResponse: Codable {

@@ -3,7 +3,7 @@ import UIKit
 class SolicitudesViewController: UIViewController {
 
     // MARK: - Properties
-    private var solicitudes: [Solicitud] = MockData.solicitudes
+    private var solicitudes: [Solicitud] = []
     private var filteredSolicitudes: [Solicitud] = []
 
     // MARK: - UI Components

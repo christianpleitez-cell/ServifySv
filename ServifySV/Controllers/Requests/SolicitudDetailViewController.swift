@@ -4,7 +4,7 @@ class SolicitudDetailViewController: UIViewController {
 
     // MARK: - Properties
     private var solicitud: Solicitud
-    private var mensajes: [(autor: String, contenido: String, hora: String, esCliente: Bool)] = []
+    private var mensajes: [Mensaje] = []
 
     // MARK: - UI Components
     private let headerView = UIView()
@@ -70,6 +70,17 @@ class SolicitudDetailViewController: UIViewController {
         return btn
     }()
 
+    private let completarButton: UIButton = {
+        let btn = UIButton(type: .system)
+        btn.setTitle("Completar", for: .normal)
+        btn.backgroundColor = .systemIndigo
+        btn.setTitleColor(.white, for: .normal)
+        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: 14)
+        btn.layer.cornerRadius = 8
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        return btn
+    }()
+
     // MARK: - Init
     init(solicitud: Solicitud) {
         self.solicitud = solicitud
@@ -82,7 +93,7 @@ class SolicitudDetailViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        loadMockMessages()
+        loadMensajes()
     }
 
     // MARK: - Setup
@@ -123,10 +134,15 @@ class SolicitudDetailViewController: UIViewController {
 
         let isProfessional = AuthManager.shared.isProfessional
         let isPending = solicitud.estado == "pendiente"
+        let isAceptada = solicitud.estado == "aceptada"
 
         if isProfessional && isPending {
             headerView.addSubview(acceptButton)
             headerView.addSubview(rejectButton)
+        }
+
+        if isProfessional && isAceptada {
+            headerView.addSubview(completarButton)
         }
 
         view.addSubview(messagesTableView)
@@ -175,6 +191,15 @@ class SolicitudDetailViewController: UIViewController {
             ])
         }
 
+        if isProfessional && isAceptada {
+            NSLayoutConstraint.activate([
+                completarButton.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8),
+                completarButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 12),
+                completarButton.widthAnchor.constraint(equalToConstant: 110),
+                completarButton.heightAnchor.constraint(equalToConstant: 32),
+            ])
+        }
+
         NSLayoutConstraint.activate([
             messagesTableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
             messagesTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -214,15 +239,36 @@ class SolicitudDetailViewController: UIViewController {
             acceptButton.addTarget(self, action: #selector(acceptTapped), for: .touchUpInside)
             rejectButton.addTarget(self, action: #selector(rejectTapped), for: .touchUpInside)
         }
+
+        if isProfessional && isAceptada {
+            completarButton.addTarget(self, action: #selector(completarTapped), for: .touchUpInside)
+        }
     }
 
-    private func loadMockMessages() {
-        mensajes = [
-            (autor: "Cliente", contenido: "Hola, ¿podrías venir a ver la habitación mañana?", hora: "10:30 a.m.", esCliente: true),
-            (autor: "Profesional", contenido: "Claro, ¿te parece bien a las 2pm?", hora: "10:45 a.m.", esCliente: false),
-            (autor: "Cliente", contenido: "Perfecto, te espero entonces", hora: "10:50 a.m.", esCliente: true),
-        ]
-        messagesTableView.reloadData()
+    private func loadMensajes() {
+        APIManager.shared.getMensajes(solicitudId: solicitud.id) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                switch result {
+                case .success(let response):
+                    let currentUserId = AuthManager.shared.currentUser?.id
+                    self.mensajes = response.mensajes.map { mensaje in
+                        var m = mensaje
+                        m.esPropio = (mensaje.remitente?.id == currentUserId)
+                        return m
+                    }
+                    self.messagesTableView.reloadData()
+                    if !self.mensajes.isEmpty {
+                        self.messagesTableView.scrollToRow(
+                            at: IndexPath(row: self.mensajes.count - 1, section: 0),
+                            at: .bottom, animated: false
+                        )
+                    }
+                case .failure:
+                    break
+                }
+            }
+        }
     }
 
     @objc private func closeTapped() {
@@ -230,14 +276,22 @@ class SolicitudDetailViewController: UIViewController {
     }
 
     @objc private func sendTapped() {
-        if let text = messageTextField.text, !text.isEmpty {
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            let hora = formatter.string(from: Date())
-            mensajes.append((autor: "Cliente", contenido: text, hora: hora, esCliente: true))
-            messageTextField.text = ""
-            messagesTableView.reloadData()
-            messagesTableView.scrollToRow(at: IndexPath(row: mensajes.count - 1, section: 0), at: .bottom, animated: true)
+        guard let text = messageTextField.text, !text.isEmpty,
+              let userId = AuthManager.shared.currentUser?.id else { return }
+
+        messageTextField.text = ""
+        sendButton.isEnabled = false
+
+        APIManager.shared.sendMensaje(solicitudId: solicitud.id, remitenteId: userId, contenido: text) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.sendButton.isEnabled = true
+                switch result {
+                case .success:
+                    self?.loadMensajes()
+                case .failure(let error):
+                    self?.showAlert(title: "Error", message: error.localizedDescription)
+                }
+            }
         }
     }
 
@@ -289,6 +343,38 @@ class SolicitudDetailViewController: UIViewController {
         }
     }
 
+    @objc private func completarTapped() {
+        let confirm = UIAlertController(
+            title: "Completar trabajo",
+            message: "¿Confirmas que el trabajo ha sido completado?",
+            preferredStyle: .alert
+        )
+        confirm.addAction(UIAlertAction(title: "Sí, completar", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            self.completarButton.isEnabled = false
+            self.completarButton.setTitle("Completando...", for: .normal)
+
+            APIManager.shared.updateSolicitudEstado(solicitudId: self.solicitud.id, estado: "completada") { [weak self] result in
+                DispatchQueue.main.async {
+                    self?.completarButton.isEnabled = true
+                    self?.completarButton.setTitle("Completar", for: .normal)
+
+                    switch result {
+                    case .success:
+                        self?.showAlert(title: "¡Trabajo completado!", message: "La solicitud ha sido marcada como completada.")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                            self?.navigationController?.popViewController(animated: true)
+                        }
+                    case .failure(let error):
+                        self?.showAlert(title: "Error", message: error.localizedDescription)
+                    }
+                }
+            }
+        })
+        confirm.addAction(UIAlertAction(title: "Cancelar", style: .cancel))
+        present(confirm, animated: true)
+    }
+
     private func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
@@ -307,24 +393,25 @@ extension SolicitudDetailViewController: UITableViewDataSource, UITableViewDeleg
         cell.backgroundColor = .clear
 
         let mensaje = mensajes[indexPath.row]
+        let esPropio = mensaje.esPropio
 
         let bubbleView = UIView()
-        bubbleView.backgroundColor = mensaje.esCliente ? .systemBlue : UIColor(white: 0.95, alpha: 1)
+        bubbleView.backgroundColor = esPropio ? .systemBlue : UIColor(white: 0.95, alpha: 1)
         bubbleView.layer.cornerRadius = 12
         bubbleView.translatesAutoresizingMaskIntoConstraints = false
         cell.contentView.addSubview(bubbleView)
 
         let textLabel = UILabel()
         textLabel.text = mensaje.contenido
-        textLabel.textColor = mensaje.esCliente ? .white : .label
+        textLabel.textColor = esPropio ? .white : .label
         textLabel.font = UIFont.systemFont(ofSize: 14)
         textLabel.numberOfLines = 0
         textLabel.translatesAutoresizingMaskIntoConstraints = false
         bubbleView.addSubview(textLabel)
 
         let horaLabel = UILabel()
-        horaLabel.text = mensaje.hora
-        horaLabel.textColor = mensaje.esCliente ? .white.withAlphaComponent(0.7) : .systemGray
+        horaLabel.text = mensaje.fechaEnvio ?? ""
+        horaLabel.textColor = esPropio ? .white.withAlphaComponent(0.7) : .systemGray
         horaLabel.font = UIFont.systemFont(ofSize: 12)
         horaLabel.translatesAutoresizingMaskIntoConstraints = false
         bubbleView.addSubview(horaLabel)
@@ -339,7 +426,7 @@ extension SolicitudDetailViewController: UITableViewDataSource, UITableViewDeleg
             horaLabel.bottomAnchor.constraint(equalTo: bubbleView.bottomAnchor, constant: -8),
         ])
 
-        if mensaje.esCliente {
+        if esPropio {
             NSLayoutConstraint.activate([
                 bubbleView.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
                 bubbleView.leadingAnchor.constraint(greaterThanOrEqualTo: cell.contentView.leadingAnchor, constant: 60),
