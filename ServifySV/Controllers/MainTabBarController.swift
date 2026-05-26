@@ -23,16 +23,10 @@ class MainTabBarController: UITabBarController {
         let solicitudesVC = UINavigationController(rootViewController: SolicitudesViewController())
         solicitudesVC.tabBarItem = UITabBarItem(title: "Solicitudes", image: UIImage(systemName: "list.bullet.clipboard"), selectedImage: UIImage(systemName: "list.bullet.clipboard.fill"))
 
-        let chatVC = UINavigationController(rootViewController: ChatsListViewController())
-        chatVC.tabBarItem = UITabBarItem(title: "Mensajes", image: UIImage(systemName: "message"), selectedImage: UIImage(systemName: "message.fill"))
-
-        let historialVC = UINavigationController(rootViewController: HistorialViewController())
-        historialVC.tabBarItem = UITabBarItem(title: "Historial", image: UIImage(systemName: "clock"), selectedImage: UIImage(systemName: "clock.fill"))
-
         let perfilVC = UINavigationController(rootViewController: ClienteProfileViewController())
         perfilVC.tabBarItem = UITabBarItem(title: "Perfil", image: UIImage(systemName: "person"), selectedImage: UIImage(systemName: "person.fill"))
 
-        viewControllers = [homeVC, solicitudesVC, chatVC, historialVC, perfilVC]
+        viewControllers = [homeVC, solicitudesVC, perfilVC]
     }
 
     private func setupProfessionalTabs() {
@@ -48,7 +42,7 @@ class MainTabBarController: UITabBarController {
         let historialVC = UINavigationController(rootViewController: HistorialViewController())
         historialVC.tabBarItem = UITabBarItem(title: "Historial", image: UIImage(systemName: "clock"), selectedImage: UIImage(systemName: "clock.fill"))
 
-        let perfilVC = UINavigationController(rootViewController: ClienteProfileViewController())
+        let perfilVC = UINavigationController(rootViewController: ProfesionalProfileViewController())
         perfilVC.tabBarItem = UITabBarItem(title: "Perfil", image: UIImage(systemName: "person"), selectedImage: UIImage(systemName: "person.fill"))
 
         viewControllers = [homeVC, solicitudesVC, publicarVC, historialVC, perfilVC]

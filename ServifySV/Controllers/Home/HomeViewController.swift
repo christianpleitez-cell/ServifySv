@@ -76,12 +76,15 @@ class HomeViewController: UIViewController {
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(subtitleLabel)
 
+        let initials = userName.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
         let avatarButton = UIButton(type: .system)
         avatarButton.backgroundColor = .systemBlue
-        avatarButton.setTitle("C", for: .normal)
+        avatarButton.setTitle(String(initials.prefix(2)).uppercased(), for: .normal)
         avatarButton.setTitleColor(.white, for: .normal)
         avatarButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
         avatarButton.layer.cornerRadius = 20
+        avatarButton.layer.borderWidth = 2
+        avatarButton.layer.borderColor = UIColor.white.withAlphaComponent(0.4).cgColor
         avatarButton.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(avatarButton)
 
@@ -91,6 +94,7 @@ class HomeViewController: UIViewController {
 
             subtitleLabel.topAnchor.constraint(equalTo: holaLabel.bottomAnchor, constant: 4),
             subtitleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            subtitleLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8),
 
             avatarButton.centerYAnchor.constraint(equalTo: holaLabel.centerYAnchor),
             avatarButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
@@ -167,15 +171,26 @@ class HomeViewController: UIViewController {
     }
 
     private func applySearch() {
+        let base: [Profesional]
         if searchText.isEmpty {
-            profesionalesFiltrados = profesionales
+            base = profesionales
         } else {
             let q = searchText.lowercased()
-            profesionalesFiltrados = profesionales.filter { p in
+            base = profesionales.filter { p in
                 let nombre = p.usuario?.nombre.lowercased() ?? ""
                 let especialidad = p.especialidad?.lowercased() ?? ""
-                let servicio = p.servicios?.first?.nombreServicio.lowercased() ?? ""
-                return nombre.contains(q) || especialidad.contains(q) || servicio.contains(q)
+                let servicios = p.servicios?.map { $0.nombreServicio.lowercased() }.joined(separator: " ") ?? ""
+                return nombre.contains(q) || especialidad.contains(q) || servicios.contains(q)
+            }
+        }
+
+        // Una entry por servicio: si un profesional tiene 3 servicios → 3 cards
+        profesionalesFiltrados = base.flatMap { prof -> [Profesional] in
+            guard let servicios = prof.servicios, !servicios.isEmpty else { return [prof] }
+            return servicios.map { servicio in
+                var copia = prof
+                copia.servicios = [servicio]
+                return copia
             }
         }
         tableView.reloadData()

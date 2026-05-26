@@ -8,7 +8,7 @@ struct MockData {
         nombre: "Carlos Martínez",
         correo: "carlos1@gmail.com",
         tipoUsuario: .cliente,
-        fechaRegistro: Date(),
+        fechaRegistro: nil,
         fotoPerfil: nil
     )
 
@@ -17,7 +17,7 @@ struct MockData {
         nombre: "María López",
         correo: "maria@gmail.com",
         tipoUsuario: .cliente,
-        fechaRegistro: Date(),
+        fechaRegistro: nil,
         fotoPerfil: nil
     )
 
@@ -37,7 +37,7 @@ struct MockData {
     static let profesionales: [Profesional] = [
         Profesional(
             id: 1,
-            usuario: User(id: 10, nombre: "Roberto Pérez", correo: "roberto@gmail.com", tipoUsuario: .profesional, fechaRegistro: Date(), fotoPerfil: nil),
+            usuario: User(id: 10, nombre: "Roberto Pérez", correo: "roberto@gmail.com", tipoUsuario: .profesional, fechaRegistro: nil, fotoPerfil: nil),
             especialidad: "Electricista",
             descripcion: "Técnico eléctrico con más de 8 años de experiencia. Especialista en instalaciones residenciales y comerciales. Trabajo garantizado y materiales de calidad.",
             experiencia: 8,
@@ -48,7 +48,7 @@ struct MockData {
         ),
         Profesional(
             id: 2,
-            usuario: User(id: 11, nombre: "Juan Hernández", correo: "juan@gmail.com", tipoUsuario: .profesional, fechaRegistro: Date(), fotoPerfil: nil),
+            usuario: User(id: 11, nombre: "Juan Hernández", correo: "juan@gmail.com", tipoUsuario: .profesional, fechaRegistro: nil, fotoPerfil: nil),
             especialidad: "Plomero",
             descripcion: "Plomero profesional con 5 años de experiencia. Reparaciones de emergencia disponibles. Atención rápida y precios justos.",
             experiencia: 5,
@@ -59,7 +59,7 @@ struct MockData {
         ),
         Profesional(
             id: 3,
-            usuario: User(id: 12, nombre: "Ana García", correo: "ana@gmail.com", tipoUsuario: .profesional, fechaRegistro: Date(), fotoPerfil: nil),
+            usuario: User(id: 12, nombre: "Ana García", correo: "ana@gmail.com", tipoUsuario: .profesional, fechaRegistro: nil, fotoPerfil: nil),
             especialidad: "Pintora",
             descripcion: "Especialista en pintura interior y exterior. Trabajo limpio y ordenado, con acabados de alta calidad. 10 años en el rubro.",
             experiencia: 10,
@@ -70,7 +70,7 @@ struct MockData {
         ),
         Profesional(
             id: 4,
-            usuario: User(id: 13, nombre: "Mario Gutiérrez", correo: "mario@gmail.com", tipoUsuario: .profesional, fechaRegistro: Date(), fotoPerfil: nil),
+            usuario: User(id: 13, nombre: "Mario Gutiérrez", correo: "mario@gmail.com", tipoUsuario: .profesional, fechaRegistro: nil, fotoPerfil: nil),
             especialidad: "Albañil",
             descripcion: "Constructor con experiencia en construcción y remodelación. Trabajos de calidad garantizada con materiales de primera.",
             experiencia: 12,
@@ -81,7 +81,7 @@ struct MockData {
         ),
         Profesional(
             id: 5,
-            usuario: User(id: 14, nombre: "Luis Castillo", correo: "luis@gmail.com", tipoUsuario: .profesional, fechaRegistro: Date(), fotoPerfil: nil),
+            usuario: User(id: 14, nombre: "Luis Castillo", correo: "luis@gmail.com", tipoUsuario: .profesional, fechaRegistro: nil, fotoPerfil: nil),
             especialidad: "Jardinero",
             descripcion: "Experto en jardinería y paisajismo. Mantenimiento de jardines, poda y diseño de espacios verdes.",
             experiencia: 6,
@@ -92,7 +92,7 @@ struct MockData {
         ),
         Profesional(
             id: 6,
-            usuario: User(id: 15, nombre: "Carmen Morales", correo: "carmen@gmail.com", tipoUsuario: .profesional, fechaRegistro: Date(), fotoPerfil: nil),
+            usuario: User(id: 15, nombre: "Carmen Morales", correo: "carmen@gmail.com", tipoUsuario: .profesional, fechaRegistro: nil, fotoPerfil: nil),
             especialidad: "Limpieza",
             descripcion: "Servicio de limpieza profesional para hogares y oficinas. Personal capacitado y productos incluidos.",
             experiencia: 4,

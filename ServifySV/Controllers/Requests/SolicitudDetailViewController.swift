@@ -1,10 +1,12 @@
 import UIKit
+import FirebaseDatabase
 
 class SolicitudDetailViewController: UIViewController {
 
     // MARK: - Properties
     private var solicitud: Solicitud
-    private var mensajes: [Mensaje] = []
+    private var mensajesData: [[String: Any]] = []
+    private var firebaseHandle: DatabaseHandle?
 
     // MARK: - UI Components
     private let headerView = UIView()
@@ -48,13 +50,20 @@ class SolicitudDetailViewController: UIViewController {
         return btn
     }()
 
+    private let actionsContainer: UIView = {
+        let v = UIView()
+        v.backgroundColor = .white
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+
     private let acceptButton: UIButton = {
         let btn = UIButton(type: .system)
         btn.setTitle("Aceptar", for: .normal)
         btn.backgroundColor = .systemGreen
         btn.setTitleColor(.white, for: .normal)
-        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: 14)
-        btn.layer.cornerRadius = 8
+        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15)
+        btn.layer.cornerRadius = 10
         btn.translatesAutoresizingMaskIntoConstraints = false
         return btn
     }()
@@ -64,19 +73,30 @@ class SolicitudDetailViewController: UIViewController {
         btn.setTitle("Rechazar", for: .normal)
         btn.backgroundColor = .systemRed
         btn.setTitleColor(.white, for: .normal)
-        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: 14)
-        btn.layer.cornerRadius = 8
+        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15)
+        btn.layer.cornerRadius = 10
         btn.translatesAutoresizingMaskIntoConstraints = false
         return btn
     }()
 
     private let completarButton: UIButton = {
         let btn = UIButton(type: .system)
-        btn.setTitle("Completar", for: .normal)
+        btn.setTitle("Marcar como completado", for: .normal)
         btn.backgroundColor = .systemIndigo
         btn.setTitleColor(.white, for: .normal)
-        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: 14)
-        btn.layer.cornerRadius = 8
+        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15)
+        btn.layer.cornerRadius = 10
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        return btn
+    }()
+
+    private let calificarButton: UIButton = {
+        let btn = UIButton(type: .system)
+        btn.setTitle("Calificar Servicio", for: .normal)
+        btn.backgroundColor = .systemYellow
+        btn.setTitleColor(.white, for: .normal)
+        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15)
+        btn.layer.cornerRadius = 10
         btn.translatesAutoresizingMaskIntoConstraints = false
         return btn
     }()
@@ -99,12 +119,26 @@ class SolicitudDetailViewController: UIViewController {
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = UIColor(white: 0.97, alpha: 1)
-        title = ""
         navigationController?.navigationBar.isHidden = true
 
-        headerView.backgroundColor = UIColor.systemGray5
+        let isProfessional = AuthManager.shared.isProfessional
+        let isPending = solicitud.estado == "pendiente"
+        let isAceptada = solicitud.estado == "aceptada"
+        let isCompletada = solicitud.estado == "completada"
+
+        // MARK: Header
+        headerView.backgroundColor = .white
         headerView.translatesAutoresizingMaskIntoConstraints = false
+        headerView.layer.shadowColor = UIColor.black.cgColor
+        headerView.layer.shadowOpacity = 0.06
+        headerView.layer.shadowOffset = CGSize(width: 0, height: 2)
+        headerView.layer.shadowRadius = 4
         view.addSubview(headerView)
+
+        closeButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
+        closeButton.tintColor = .systemBlue
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(closeButton)
 
         let avatarView = UIView()
         avatarView.backgroundColor = .systemBlue.withAlphaComponent(0.15)
@@ -127,84 +161,98 @@ class SolicitudDetailViewController: UIViewController {
         servicioLabel.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(servicioLabel)
 
-        closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
-        closeButton.tintColor = .black
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        headerView.addSubview(closeButton)
-
-        let isProfessional = AuthManager.shared.isProfessional
-        let isPending = solicitud.estado == "pendiente"
-        let isAceptada = solicitud.estado == "aceptada"
-
-        if isProfessional && isPending {
-            headerView.addSubview(acceptButton)
-            headerView.addSubview(rejectButton)
-        }
-
-        if isProfessional && isAceptada {
-            headerView.addSubview(completarButton)
-        }
-
-        view.addSubview(messagesTableView)
-        view.addSubview(messageInputContainer)
-
-        messageInputContainer.addSubview(messageTextField)
-        messageInputContainer.addSubview(sendButton)
-
         NSLayoutConstraint.activate([
             headerView.topAnchor.constraint(equalTo: view.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 80),
+            headerView.heightAnchor.constraint(equalToConstant: 90),
+
+            closeButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 12),
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            closeButton.widthAnchor.constraint(equalToConstant: 32),
+            closeButton.heightAnchor.constraint(equalToConstant: 32),
 
             avatarView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 12),
-            avatarView.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            avatarView.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -12),
             avatarView.widthAnchor.constraint(equalToConstant: 40),
             avatarView.heightAnchor.constraint(equalToConstant: 40),
 
             avatarLabel.centerXAnchor.constraint(equalTo: avatarView.centerXAnchor),
             avatarLabel.centerYAnchor.constraint(equalTo: avatarView.centerYAnchor),
 
-            clienteLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 12),
-            clienteLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor, constant: -12),
+            clienteLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 10),
+            clienteLabel.topAnchor.constraint(equalTo: avatarView.topAnchor),
 
-            servicioLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 12),
+            servicioLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 10),
             servicioLabel.topAnchor.constraint(equalTo: clienteLabel.bottomAnchor, constant: 2),
-
-            closeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -12),
-            closeButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
-            closeButton.widthAnchor.constraint(equalToConstant: 24),
-            closeButton.heightAnchor.constraint(equalToConstant: 24),
         ])
 
+        // MARK: Messages
+        view.addSubview(messagesTableView)
+
+        // MARK: Actions container (entre mensajes e input)
+        view.addSubview(actionsContainer)
+
         if isProfessional && isPending {
+            actionsContainer.addSubview(acceptButton)
+            actionsContainer.addSubview(rejectButton)
             NSLayoutConstraint.activate([
-                acceptButton.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8),
-                acceptButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 12),
-                acceptButton.widthAnchor.constraint(equalToConstant: 80),
-                acceptButton.heightAnchor.constraint(equalToConstant: 32),
+                acceptButton.topAnchor.constraint(equalTo: actionsContainer.topAnchor, constant: 10),
+                acceptButton.leadingAnchor.constraint(equalTo: actionsContainer.leadingAnchor, constant: 16),
+                acceptButton.bottomAnchor.constraint(equalTo: actionsContainer.bottomAnchor, constant: -10),
+                acceptButton.heightAnchor.constraint(equalToConstant: 44),
 
-                rejectButton.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8),
-                rejectButton.leadingAnchor.constraint(equalTo: acceptButton.trailingAnchor, constant: 8),
-                rejectButton.widthAnchor.constraint(equalToConstant: 80),
-                rejectButton.heightAnchor.constraint(equalToConstant: 32),
+                rejectButton.topAnchor.constraint(equalTo: actionsContainer.topAnchor, constant: 10),
+                rejectButton.leadingAnchor.constraint(equalTo: acceptButton.trailingAnchor, constant: 12),
+                rejectButton.trailingAnchor.constraint(equalTo: actionsContainer.trailingAnchor, constant: -16),
+                rejectButton.bottomAnchor.constraint(equalTo: actionsContainer.bottomAnchor, constant: -10),
+                rejectButton.widthAnchor.constraint(equalTo: acceptButton.widthAnchor),
+                rejectButton.heightAnchor.constraint(equalToConstant: 44),
+            ])
+        } else if isProfessional && isAceptada {
+            actionsContainer.addSubview(completarButton)
+            NSLayoutConstraint.activate([
+                completarButton.topAnchor.constraint(equalTo: actionsContainer.topAnchor, constant: 10),
+                completarButton.leadingAnchor.constraint(equalTo: actionsContainer.leadingAnchor, constant: 16),
+                completarButton.trailingAnchor.constraint(equalTo: actionsContainer.trailingAnchor, constant: -16),
+                completarButton.bottomAnchor.constraint(equalTo: actionsContainer.bottomAnchor, constant: -10),
+                completarButton.heightAnchor.constraint(equalToConstant: 44),
+            ])
+        } else if !isProfessional && isCompletada {
+            actionsContainer.addSubview(calificarButton)
+            NSLayoutConstraint.activate([
+                calificarButton.topAnchor.constraint(equalTo: actionsContainer.topAnchor, constant: 10),
+                calificarButton.leadingAnchor.constraint(equalTo: actionsContainer.leadingAnchor, constant: 16),
+                calificarButton.trailingAnchor.constraint(equalTo: actionsContainer.trailingAnchor, constant: -16),
+                calificarButton.bottomAnchor.constraint(equalTo: actionsContainer.bottomAnchor, constant: -10),
+                calificarButton.heightAnchor.constraint(equalToConstant: 44),
             ])
         }
 
-        if isProfessional && isAceptada {
-            NSLayoutConstraint.activate([
-                completarButton.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8),
-                completarButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 12),
-                completarButton.widthAnchor.constraint(equalToConstant: 110),
-                completarButton.heightAnchor.constraint(equalToConstant: 32),
-            ])
+        let actionsHeight: CGFloat
+        if isProfessional && (isPending || isAceptada) {
+            actionsHeight = 64
+        } else if !isProfessional && isCompletada {
+            actionsHeight = 64
+        } else {
+            actionsHeight = 0
         }
+
+        // MARK: Input
+        view.addSubview(messageInputContainer)
+        messageInputContainer.addSubview(messageTextField)
+        messageInputContainer.addSubview(sendButton)
 
         NSLayoutConstraint.activate([
             messagesTableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
             messagesTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             messagesTableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            messagesTableView.bottomAnchor.constraint(equalTo: messageInputContainer.topAnchor),
+            messagesTableView.bottomAnchor.constraint(equalTo: actionsContainer.topAnchor),
+
+            actionsContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            actionsContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            actionsContainer.bottomAnchor.constraint(equalTo: messageInputContainer.topAnchor),
+            actionsContainer.heightAnchor.constraint(equalToConstant: actionsHeight),
 
             messageInputContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             messageInputContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -226,7 +274,7 @@ class SolicitudDetailViewController: UIViewController {
         let initials = nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
         avatarLabel.text = String(initials.prefix(1))
         clienteLabel.text = nombre
-        servicioLabel.text = solicitud.servicio?.nombreServicio ?? ""
+        servicioLabel.text = solicitud.servicio?.nombreServicio ?? solicitud.descripcion
 
         messagesTableView.delegate = self
         messagesTableView.dataSource = self
@@ -234,40 +282,35 @@ class SolicitudDetailViewController: UIViewController {
 
         closeButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
         sendButton.addTarget(self, action: #selector(sendTapped), for: .touchUpInside)
-
         if isProfessional && isPending {
             acceptButton.addTarget(self, action: #selector(acceptTapped), for: .touchUpInside)
             rejectButton.addTarget(self, action: #selector(rejectTapped), for: .touchUpInside)
         }
-
         if isProfessional && isAceptada {
             completarButton.addTarget(self, action: #selector(completarTapped), for: .touchUpInside)
+        }
+        if !isProfessional && isCompletada {
+            calificarButton.addTarget(self, action: #selector(calificarTapped), for: .touchUpInside)
         }
     }
 
     private func loadMensajes() {
-        APIManager.shared.getMensajes(solicitudId: solicitud.id) { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                switch result {
-                case .success(let response):
-                    let currentUserId = AuthManager.shared.currentUser?.id
-                    self.mensajes = response.mensajes.map { mensaje in
-                        var m = mensaje
-                        m.esPropio = (mensaje.remitente?.id == currentUserId)
-                        return m
-                    }
-                    self.messagesTableView.reloadData()
-                    if !self.mensajes.isEmpty {
-                        self.messagesTableView.scrollToRow(
-                            at: IndexPath(row: self.mensajes.count - 1, section: 0),
-                            at: .bottom, animated: false
-                        )
-                    }
-                case .failure:
-                    break
-                }
+        firebaseHandle = FirebaseManager.shared.observeMensajes(idSolicitud: solicitud.id) { [weak self] data in
+            guard let self = self else { return }
+            self.mensajesData = data
+            self.messagesTableView.reloadData()
+            if !self.mensajesData.isEmpty {
+                self.messagesTableView.scrollToRow(
+                    at: IndexPath(row: self.mensajesData.count - 1, section: 0),
+                    at: .bottom, animated: false
+                )
             }
+        }
+    }
+
+    deinit {
+        if let handle = firebaseHandle {
+            FirebaseManager.shared.removeObserver(idSolicitud: solicitud.id, handle: handle)
         }
     }
 
@@ -276,23 +319,17 @@ class SolicitudDetailViewController: UIViewController {
     }
 
     @objc private func sendTapped() {
-        guard let text = messageTextField.text, !text.isEmpty,
-              let userId = AuthManager.shared.currentUser?.id else { return }
+        guard let text = messageTextField.text?.trimmingCharacters(in: .whitespaces), !text.isEmpty,
+              let currentUser = AuthManager.shared.currentUser,
+              let userId = currentUser.userId else { return }
 
         messageTextField.text = ""
-        sendButton.isEnabled = false
-
-        APIManager.shared.sendMensaje(solicitudId: solicitud.id, remitenteId: userId, contenido: text) { [weak self] result in
-            DispatchQueue.main.async {
-                self?.sendButton.isEnabled = true
-                switch result {
-                case .success:
-                    self?.loadMensajes()
-                case .failure(let error):
-                    self?.showAlert(title: "Error", message: error.localizedDescription)
-                }
-            }
-        }
+        FirebaseManager.shared.sendMensaje(
+            idSolicitud: solicitud.id,
+            idRemitente: userId,
+            nombreRemitente: currentUser.nombre,
+            contenido: text
+        )
     }
 
     @objc private func acceptTapped() {
@@ -375,16 +412,41 @@ class SolicitudDetailViewController: UIViewController {
         present(confirm, animated: true)
     }
 
+    @objc private func calificarTapped() {
+        calificarButton.isEnabled = false
+        APIManager.shared.getResenaBySolicitud(solicitudId: solicitud.id) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.calificarButton.isEnabled = true
+                let vc: CalificarViewController
+                if case .success(let response) = result, let resena = response.resena {
+                    vc = CalificarViewController(solicitud: self.solicitud, resena: resena)
+                } else {
+                    vc = CalificarViewController(solicitud: self.solicitud)
+                }
+                self.navigationController?.pushViewController(vc, animated: true)
+            }
+        }
+    }
+
     private func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
+
+    private func formatTimestamp(_ value: Any?) -> String {
+        guard let ts = value as? Double else { return "" }
+        let date = Date(timeIntervalSince1970: ts / 1000)
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
+    }
 }
 
 extension SolicitudDetailViewController: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        mensajes.count
+        mensajesData.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -392,8 +454,9 @@ extension SolicitudDetailViewController: UITableViewDataSource, UITableViewDeleg
         cell.selectionStyle = .none
         cell.backgroundColor = .clear
 
-        let mensaje = mensajes[indexPath.row]
-        let esPropio = mensaje.esPropio
+        let data = mensajesData[indexPath.row]
+        let currentUserId = AuthManager.shared.currentUser?.userId
+        let esPropio = (data["idRemitente"] as? Int) == currentUserId
 
         let bubbleView = UIView()
         bubbleView.backgroundColor = esPropio ? .systemBlue : UIColor(white: 0.95, alpha: 1)
@@ -402,7 +465,7 @@ extension SolicitudDetailViewController: UITableViewDataSource, UITableViewDeleg
         cell.contentView.addSubview(bubbleView)
 
         let textLabel = UILabel()
-        textLabel.text = mensaje.contenido
+        textLabel.text = data["contenido"] as? String ?? ""
         textLabel.textColor = esPropio ? .white : .label
         textLabel.font = UIFont.systemFont(ofSize: 14)
         textLabel.numberOfLines = 0
@@ -410,7 +473,7 @@ extension SolicitudDetailViewController: UITableViewDataSource, UITableViewDeleg
         bubbleView.addSubview(textLabel)
 
         let horaLabel = UILabel()
-        horaLabel.text = mensaje.fechaEnvio ?? ""
+        horaLabel.text = formatTimestamp(data["fechaEnvio"])
         horaLabel.textColor = esPropio ? .white.withAlphaComponent(0.7) : .systemGray
         horaLabel.font = UIFont.systemFont(ofSize: 12)
         horaLabel.translatesAutoresizingMaskIntoConstraints = false

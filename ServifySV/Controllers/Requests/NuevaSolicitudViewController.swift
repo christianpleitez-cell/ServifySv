@@ -186,7 +186,7 @@ class NuevaSolicitudViewController: UIViewController {
             return
         }
 
-        guard let clienteId = AuthManager.shared.currentUser?.id else { return }
+        guard let clienteId = AuthManager.shared.currentUser?.id_profesional else { return }
 
         guard let servicios = profesional.servicios, selectedServicioIndex < servicios.count else { return }
         let servicioSeleccionado = servicios[selectedServicioIndex]

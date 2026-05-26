@@ -3,12 +3,15 @@ import UIKit
 class ProfesionalProfileViewController: UIViewController {
 
     private var profesional: Profesional?
-    private var estadisticas: (trabajos: Int, ingresos: Double, rating: Double) = (0, 0, 0)
     private var editarButton: UIButton!
+    private var editarTitleLabel: UILabel!
     private var nombreLabel: UILabel!
     private var ratingLabel: UILabel!
     private var statsStack: UIStackView!
     private var contentStackLabels: [UILabel] = []
+    private var resenasStack: UIStackView?
+    private var trabajosCardValueLabel: UILabel?
+    private var ingresosCardValueLabel: UILabel?
 
     private let headerView: UIView = {
         let v = UIView()
@@ -59,6 +62,7 @@ class ProfesionalProfileViewController: UIViewController {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = true
         loadProfesionalData()
+        loadReseñas()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -68,27 +72,24 @@ class ProfesionalProfileViewController: UIViewController {
 
     private func loadProfesionalData() {
         guard let currentUser = AuthManager.shared.currentUser else { return }
+        let profesionalId = currentUser.id_profesional ?? 0
 
-        APIManager.shared.getProfesionalById(id: currentUser.id) { [weak self] result in
+        APIManager.shared.getProfesional(id: profesionalId) { [weak self] result in
             DispatchQueue.main.async {
-                switch result {
-                case .success(let response):
-                    self?.profesional = Profesional(
-                        id: response.id,
-                        usuario: response.usuario,
-                        especialidad: response.especialidad,
-                        descripcion: response.descripcion,
-                        experiencia: response.experiencia,
-                        estadoVerificacion: response.estadoVerificacion,
-                        calificacionPromedio: response.calificacionPromedio,
-                        totalCalificaciones: response.totalCalificaciones,
-                        biografia: nil,
-                        servicios: response.servicios
-                    )
+                if case .success(let response) = result {
+                    self?.profesional = response.profesional
                     self?.updateUI()
+                }
+            }
+        }
 
-                case .failure:
-                    self?.profesional = nil
+        APIManager.shared.getSolicitudesProfesional(profesionalId: profesionalId) { [weak self] result in
+            DispatchQueue.main.async {
+                if case .success(let response) = result {
+                    let completadas = response.solicitudes.filter { $0.estado == "completada" }
+                    let total = completadas.reduce(0.0) { $0 + ($1.servicio?.precioReferencia ?? 0) }
+                    self?.trabajosCardValueLabel?.text = "\(completadas.count)"
+                    self?.ingresosCardValueLabel?.text = String(format: "$%.0f", total)
                 }
             }
         }
@@ -117,7 +118,7 @@ class ProfesionalProfileViewController: UIViewController {
             case 1003:
                 label.text = "📍 \(ubicacion)"
             case 1004:
-                label.text = profesional.biografia
+                label.text = profesional.biografia?.isEmpty == false ? profesional.biografia : "—"
             default:
                 break
             }
@@ -133,7 +134,9 @@ class ProfesionalProfileViewController: UIViewController {
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
 
-        view.insertSubview(headerView, belowSubview: scrollView)
+        // headerView above scrollView so content scrolls behind it, not in front
+        view.addSubview(headerView)
+        headerView.isUserInteractionEnabled = false
         view.addSubview(avatarView)
         avatarView.addSubview(avatarLabel)
         view.addSubview(cameraButton)
@@ -162,11 +165,11 @@ class ProfesionalProfileViewController: UIViewController {
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
         ])
 
         cameraButton.addTarget(self, action: #selector(cameraButtonTapped), for: .touchUpInside)
@@ -197,7 +200,7 @@ class ProfesionalProfileViewController: UIViewController {
 
     private func setupContent() {
         nombreLabel = UILabel()
-        nombreLabel.text = "Cargando..."
+        nombreLabel.text = ""
         nombreLabel.font = UIFont.boldSystemFont(ofSize: 20)
         nombreLabel.textAlignment = .center
         nombreLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -227,8 +230,10 @@ class ProfesionalProfileViewController: UIViewController {
         statsStack.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(statsStack)
 
-        let trabajosCard = createStatCard(icon: "👔", title: "Trabajos", value: "0")
-        let ingresosCard = createStatCard(icon: "$", title: "Ingresos", value: "$0.00")
+        let (trabajosCard, tvLabel) = createStatCard(icon: "👔", title: "Trabajos", value: "0")
+        trabajosCardValueLabel = tvLabel
+        let (ingresosCard, ivLabel) = createStatCard(icon: "$", title: "Ingresos", value: "$0")
+        ingresosCardValueLabel = ivLabel
 
         statsStack.addArrangedSubview(trabajosCard)
         statsStack.addArrangedSubview(ingresosCard)
@@ -241,7 +246,7 @@ class ProfesionalProfileViewController: UIViewController {
         contentView.addSubview(contactoTitle)
 
         let telefonoLabel = UILabel()
-        telefonoLabel.text = "📞 Cargando..."
+        telefonoLabel.text = "📞 —"
         telefonoLabel.font = UIFont.systemFont(ofSize: 13)
         telefonoLabel.translatesAutoresizingMaskIntoConstraints = false
         telefonoLabel.tag = 1001
@@ -249,7 +254,7 @@ class ProfesionalProfileViewController: UIViewController {
         contentStackLabels.append(telefonoLabel)
 
         let emailLabel = UILabel()
-        emailLabel.text = "📧 Cargando..."
+        emailLabel.text = "📧 —"
         emailLabel.font = UIFont.systemFont(ofSize: 13)
         emailLabel.translatesAutoresizingMaskIntoConstraints = false
         emailLabel.tag = 1002
@@ -257,7 +262,7 @@ class ProfesionalProfileViewController: UIViewController {
         contentStackLabels.append(emailLabel)
 
         let ubicacionLabel = UILabel()
-        ubicacionLabel.text = "📍 Cargando..."
+        ubicacionLabel.text = "📍 —"
         ubicacionLabel.font = UIFont.systemFont(ofSize: 13)
         ubicacionLabel.translatesAutoresizingMaskIntoConstraints = false
         ubicacionLabel.tag = 1003
@@ -272,7 +277,7 @@ class ProfesionalProfileViewController: UIViewController {
         contentView.addSubview(acercaTitle)
 
         let acercaLabel = UILabel()
-        acercaLabel.text = "Cargando..."
+        acercaLabel.text = ""
         acercaLabel.font = UIFont.systemFont(ofSize: 13)
         acercaLabel.textColor = .label
         acercaLabel.numberOfLines = 0
@@ -283,24 +288,105 @@ class ProfesionalProfileViewController: UIViewController {
 
         // Botón Editar
         editarButton = UIButton(type: .system)
-        editarButton.setTitle("Editar Perfil", for: .normal)
         editarButton.backgroundColor = .systemBlue
-        editarButton.setTitleColor(.white, for: .normal)
-        editarButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
-        editarButton.layer.cornerRadius = 24
+        editarButton.layer.cornerRadius = 14
+        editarButton.layer.shadowColor = UIColor.systemBlue.cgColor
+        editarButton.layer.shadowOpacity = 0.35
+        editarButton.layer.shadowOffset = CGSize(width: 0, height: 4)
+        editarButton.layer.shadowRadius = 10
         editarButton.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(editarButton)
 
+        let pencilIcon = UIImageView(image: UIImage(systemName: "pencil"))
+        pencilIcon.tintColor = .white
+        pencilIcon.contentMode = .scaleAspectFit
+        pencilIcon.isUserInteractionEnabled = false
+        pencilIcon.translatesAutoresizingMaskIntoConstraints = false
+
+        editarTitleLabel = UILabel()
+        editarTitleLabel.text = "Editar Perfil"
+        editarTitleLabel.font = UIFont.boldSystemFont(ofSize: 16)
+        editarTitleLabel.textColor = .white
+        editarTitleLabel.isUserInteractionEnabled = false
+        editarTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let editarStack = UIStackView(arrangedSubviews: [pencilIcon, editarTitleLabel])
+        editarStack.axis = .horizontal
+        editarStack.spacing = 10
+        editarStack.alignment = .center
+        editarStack.isUserInteractionEnabled = false
+        editarStack.translatesAutoresizingMaskIntoConstraints = false
+        editarButton.addSubview(editarStack)
+
+        NSLayoutConstraint.activate([
+            editarStack.centerXAnchor.constraint(equalTo: editarButton.centerXAnchor),
+            editarStack.centerYAnchor.constraint(equalTo: editarButton.centerYAnchor),
+            pencilIcon.widthAnchor.constraint(equalToConstant: 18),
+            pencilIcon.heightAnchor.constraint(equalToConstant: 18),
+        ])
+
         // Configuración
         let configButton = UIButton(type: .system)
-        var configConfig = UIButton.Configuration.plain()
-        configConfig.image = UIImage(systemName: "gearshape")
-        configConfig.imagePadding = 12
-        configButton.setAttributedTitle(NSAttributedString(string: "Configuración", attributes: [.font: UIFont.systemFont(ofSize: 16), .foregroundColor: UIColor.label]), for: .normal)
-        configButton.configuration = configConfig
-        configButton.contentHorizontalAlignment = .left
+        configButton.backgroundColor = .white
+        configButton.layer.cornerRadius = 14
+        configButton.layer.shadowColor = UIColor.black.cgColor
+        configButton.layer.shadowOpacity = 0.07
+        configButton.layer.shadowOffset = CGSize(width: 0, height: 2)
+        configButton.layer.shadowRadius = 6
         configButton.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(configButton)
+
+        let gearContainer = UIView()
+        gearContainer.backgroundColor = UIColor.systemGray5
+        gearContainer.layer.cornerRadius = 8
+        gearContainer.isUserInteractionEnabled = false
+        gearContainer.translatesAutoresizingMaskIntoConstraints = false
+
+        let gearIcon = UIImageView(image: UIImage(systemName: "gearshape.fill"))
+        gearIcon.tintColor = .systemGray
+        gearIcon.contentMode = .scaleAspectFit
+        gearIcon.isUserInteractionEnabled = false
+        gearIcon.translatesAutoresizingMaskIntoConstraints = false
+        gearContainer.addSubview(gearIcon)
+
+        let configTitleLabel = UILabel()
+        configTitleLabel.text = "Configuración"
+        configTitleLabel.font = UIFont.systemFont(ofSize: 16)
+        configTitleLabel.textColor = .label
+        configTitleLabel.isUserInteractionEnabled = false
+        configTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let chevronIcon = UIImageView(image: UIImage(systemName: "chevron.right"))
+        chevronIcon.tintColor = .systemGray3
+        chevronIcon.contentMode = .scaleAspectFit
+        chevronIcon.isUserInteractionEnabled = false
+        chevronIcon.translatesAutoresizingMaskIntoConstraints = false
+
+        configButton.addSubview(gearContainer)
+        configButton.addSubview(configTitleLabel)
+        configButton.addSubview(chevronIcon)
+
+        NSLayoutConstraint.activate([
+            gearContainer.leadingAnchor.constraint(equalTo: configButton.leadingAnchor, constant: 16),
+            gearContainer.centerYAnchor.constraint(equalTo: configButton.centerYAnchor),
+            gearContainer.widthAnchor.constraint(equalToConstant: 34),
+            gearContainer.heightAnchor.constraint(equalToConstant: 34),
+
+            gearIcon.centerXAnchor.constraint(equalTo: gearContainer.centerXAnchor),
+            gearIcon.centerYAnchor.constraint(equalTo: gearContainer.centerYAnchor),
+            gearIcon.widthAnchor.constraint(equalToConstant: 20),
+            gearIcon.heightAnchor.constraint(equalToConstant: 20),
+
+            configTitleLabel.leadingAnchor.constraint(equalTo: gearContainer.trailingAnchor, constant: 14),
+            configTitleLabel.centerYAnchor.constraint(equalTo: configButton.centerYAnchor),
+
+            chevronIcon.trailingAnchor.constraint(equalTo: configButton.trailingAnchor, constant: -16),
+            chevronIcon.centerYAnchor.constraint(equalTo: configButton.centerYAnchor),
+            chevronIcon.widthAnchor.constraint(equalToConstant: 10),
+            chevronIcon.heightAnchor.constraint(equalToConstant: 16),
+        ])
+
+        configButton.addTarget(self, action: #selector(configuracionTapped), for: .touchUpInside)
 
         // Cerrar Sesión
         let logoutButton = UIButton(type: .system)
@@ -313,8 +399,28 @@ class ProfesionalProfileViewController: UIViewController {
         logoutButton.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(logoutButton)
 
+        // Calificaciones y Reseñas
+        let resenasTitle = UILabel()
+        resenasTitle.text = "Calificaciones y Reseñas"
+        resenasTitle.font = UIFont.boldSystemFont(ofSize: 16)
+        resenasTitle.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(resenasTitle)
+
+        let rs = UIStackView()
+        rs.axis = .vertical
+        rs.spacing = 12
+        rs.translatesAutoresizingMaskIntoConstraints = false
+        resenasStack = rs
+        let sinResenasLabel = UILabel()
+        sinResenasLabel.text = "Sin reseñas aún"
+        sinResenasLabel.font = UIFont.systemFont(ofSize: 14)
+        sinResenasLabel.textColor = .secondaryLabel
+        sinResenasLabel.textAlignment = .center
+        rs.addArrangedSubview(sinResenasLabel)
+        contentView.addSubview(rs)
+
         NSLayoutConstraint.activate([
-            nombreLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 60),
+            nombreLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 245),
             nombreLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             nombreLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
 
@@ -348,14 +454,22 @@ class ProfesionalProfileViewController: UIViewController {
             acercaLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             acercaLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
 
-            editarButton.topAnchor.constraint(equalTo: acercaLabel.bottomAnchor, constant: 20),
+            resenasTitle.topAnchor.constraint(equalTo: acercaLabel.bottomAnchor, constant: 24),
+            resenasTitle.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+
+            rs.topAnchor.constraint(equalTo: resenasTitle.bottomAnchor, constant: 12),
+            rs.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            rs.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+
+            editarButton.topAnchor.constraint(equalTo: rs.bottomAnchor, constant: 20),
             editarButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             editarButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             editarButton.heightAnchor.constraint(equalToConstant: 50),
 
-            configButton.topAnchor.constraint(equalTo: editarButton.bottomAnchor, constant: 12),
+            configButton.topAnchor.constraint(equalTo: editarButton.bottomAnchor, constant: 16),
             configButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            configButton.heightAnchor.constraint(equalToConstant: 44),
+            configButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            configButton.heightAnchor.constraint(equalToConstant: 54),
 
             logoutButton.topAnchor.constraint(equalTo: configButton.bottomAnchor, constant: 4),
             logoutButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
@@ -365,9 +479,15 @@ class ProfesionalProfileViewController: UIViewController {
 
         editarButton.addTarget(self, action: #selector(editarTapped), for: .touchUpInside)
         logoutButton.addTarget(self, action: #selector(logoutTapped), for: .touchUpInside)
+        configButton.addTarget(self, action: #selector(configuracionTapped), for: .touchUpInside)
+
+        for btn in [editarButton!, configButton] {
+            btn.addTarget(self, action: #selector(buttonPressed(_:)), for: .touchDown)
+            btn.addTarget(self, action: #selector(buttonReleased(_:)), for: [.touchUpInside, .touchUpOutside, .touchCancel])
+        }
     }
 
-    private func createStatCard(icon: String, title: String, value: String) -> UIView {
+    private func createStatCard(icon: String, title: String, value: String) -> (UIView, UILabel) {
         let card = UIView()
         card.backgroundColor = .white
         card.layer.cornerRadius = 12
@@ -408,11 +528,35 @@ class ProfesionalProfileViewController: UIViewController {
             valueLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
         ])
 
-        return card
+        return (card, valueLabel)
+    }
+
+    @objc private func buttonPressed(_ sender: UIButton) {
+        UIView.animate(withDuration: 0.1) {
+            sender.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
+        }
+    }
+
+    @objc private func buttonReleased(_ sender: UIButton) {
+        UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.5, initialSpringVelocity: 3, options: []) {
+            sender.transform = .identity
+        }
+    }
+
+    @objc private func configuracionTapped() {
+        let alert = UIAlertController(title: "Configuración", message: nil, preferredStyle: .actionSheet)
+        alert.addAction(UIAlertAction(title: "Notificaciones", style: .default))
+        alert.addAction(UIAlertAction(title: "Privacidad", style: .default))
+        alert.addAction(UIAlertAction(title: "Acerca de Servify", style: .default))
+        alert.addAction(UIAlertAction(title: "Cancelar", style: .cancel))
+        present(alert, animated: true)
     }
 
     @objc private func editarTapped() {
-        presentEditModal()
+        guard let profesional = profesional,
+              let currentUser = AuthManager.shared.currentUser else { return }
+        let vc = EditarPerfilProfesionalViewController(profesional: profesional, currentUser: currentUser)
+        navigationController?.pushViewController(vc, animated: true)
     }
 
     @objc private func logoutTapped() {
@@ -461,16 +605,15 @@ class ProfesionalProfileViewController: UIViewController {
             let biografia = alert.textFields?[3].text ?? ""
 
             self.editarButton.isEnabled = false
-            let originalTitle = self.editarButton.title(for: .normal)
-            self.editarButton.setTitle("Guardando...", for: .normal)
+            self.editarTitleLabel.text = "Guardando..."
 
-            APIManager.shared.updatePerfil(userId: currentUser.id, nombre: nombre, telefono: telefono.isEmpty ? nil : telefono, correo: nil) { _ in }
+            APIManager.shared.updatePerfil(userId: currentUser.userId ?? 0, nombre: nombre, telefono: telefono.isEmpty ? nil : telefono, correo: nil) { _ in }
 
             APIManager.shared.updateProfesionalPerfil(profesionalId: profesional.id, especialidad: especialidad.isEmpty ? nil : especialidad, descripcion: nil, experiencia: nil, biografia: biografia.isEmpty ? nil : biografia) { [weak self] result in
                 DispatchQueue.main.async {
                     guard let self = self else { return }
                     self.editarButton.isEnabled = true
-                    self.editarButton.setTitle(originalTitle, for: .normal)
+                    self.editarTitleLabel.text = "Editar Perfil"
 
                     switch result {
                     case .success:
@@ -487,6 +630,83 @@ class ProfesionalProfileViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "Cancelar", style: .cancel))
 
         present(alert, animated: true)
+    }
+
+    private func loadReseñas() {
+        guard let profesionalId = AuthManager.shared.currentUser?.id_profesional else { return }
+        APIManager.shared.getResenasProfesional(profesionalId: profesionalId) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                guard case .success(let response) = result else { return }
+
+                // Actualizar rating label con datos reales
+                if let stats = response.estadisticas {
+                    if stats.totalResenas == 0 {
+                        self.ratingLabel?.text = "Sin calificaciones aún"
+                    } else {
+                        self.ratingLabel?.text = String(format: "⭐ %.1f · %d reseñas", stats.calificacionPromedio, stats.totalResenas)
+                    }
+                }
+
+                // Mostrar reseñas individuales
+                if !response.resenas.isEmpty {
+                    self.resenasStack?.arrangedSubviews.forEach { $0.removeFromSuperview() }
+                    for resena in response.resenas {
+                        self.resenasStack?.addArrangedSubview(self.makeResenaCard(resena: resena))
+                    }
+                }
+            }
+        }
+    }
+
+    private func makeResenaCard(resena: Resena) -> UIView {
+        let card = UIView()
+        card.backgroundColor = .white
+        card.layer.cornerRadius = 10
+        card.layer.shadowColor = UIColor.black.cgColor
+        card.layer.shadowOpacity = 0.07
+        card.layer.shadowOffset = CGSize(width: 0, height: 2)
+        card.layer.shadowRadius = 4
+        card.translatesAutoresizingMaskIntoConstraints = false
+
+        let stars = String(repeating: "★", count: resena.calificacion)
+                  + String(repeating: "☆", count: max(0, 5 - resena.calificacion))
+        let starsLabel = UILabel()
+        starsLabel.text = stars
+        starsLabel.textColor = .systemYellow
+        starsLabel.font = UIFont.systemFont(ofSize: 16)
+        starsLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(starsLabel)
+
+        let fechaLabel = UILabel()
+        fechaLabel.text = resena.fechaResena ?? ""
+        fechaLabel.font = UIFont.systemFont(ofSize: 11)
+        fechaLabel.textColor = .secondaryLabel
+        fechaLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(fechaLabel)
+
+        let comentarioLabel = UILabel()
+        comentarioLabel.text = resena.comentario?.isEmpty == false ? resena.comentario : "Sin comentario"
+        comentarioLabel.font = UIFont.systemFont(ofSize: 13)
+        comentarioLabel.textColor = .label
+        comentarioLabel.numberOfLines = 0
+        comentarioLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(comentarioLabel)
+
+        NSLayoutConstraint.activate([
+            starsLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 10),
+            starsLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+
+            fechaLabel.centerYAnchor.constraint(equalTo: starsLabel.centerYAnchor),
+            fechaLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+
+            comentarioLabel.topAnchor.constraint(equalTo: starsLabel.bottomAnchor, constant: 6),
+            comentarioLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            comentarioLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+            comentarioLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -10),
+        ])
+
+        return card
     }
 
     private func showAlert(title: String, message: String) {

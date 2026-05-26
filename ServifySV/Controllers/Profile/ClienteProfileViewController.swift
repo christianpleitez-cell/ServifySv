@@ -83,23 +83,34 @@ class ClienteProfileViewController: UIViewController {
 
     private let editarButton: UIButton = {
         let btn = UIButton(type: .system)
-        btn.setTitle("Editar Perfil", for: .normal)
         btn.backgroundColor = .systemBlue
-        btn.setTitleColor(.white, for: .normal)
-        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
-        btn.layer.cornerRadius = 24
+        btn.layer.cornerRadius = 14
+        btn.layer.shadowColor = UIColor.systemBlue.cgColor
+        btn.layer.shadowOpacity = 0.35
+        btn.layer.shadowOffset = CGSize(width: 0, height: 4)
+        btn.layer.shadowRadius = 10
         btn.translatesAutoresizingMaskIntoConstraints = false
         return btn
     }()
 
+    private let editarTitleLabel: UILabel = {
+        let l = UILabel()
+        l.text = "Editar Perfil"
+        l.font = UIFont.boldSystemFont(ofSize: 16)
+        l.textColor = .white
+        l.isUserInteractionEnabled = false
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
     private let configuracionButton: UIButton = {
         let btn = UIButton(type: .system)
-        var config = UIButton.Configuration.plain()
-        config.imagePadding = 12
-        config.image = UIImage(systemName: "gearshape")
-        btn.setAttributedTitle(NSAttributedString(string: "Configuración", attributes: [.font: UIFont.systemFont(ofSize: 16), .foregroundColor: UIColor.label]), for: .normal)
-        btn.configuration = config
-        btn.contentHorizontalAlignment = .left
+        btn.backgroundColor = .white
+        btn.layer.cornerRadius = 14
+        btn.layer.shadowColor = UIColor.black.cgColor
+        btn.layer.shadowOpacity = 0.07
+        btn.layer.shadowOffset = CGSize(width: 0, height: 2)
+        btn.layer.shadowRadius = 6
         btn.translatesAutoresizingMaskIntoConstraints = false
         return btn
     }()
@@ -168,11 +179,11 @@ class ClienteProfileViewController: UIViewController {
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
 
             avatarView.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 30),
             avatarView.centerXAnchor.constraint(equalTo: headerView.centerXAnchor),
@@ -187,7 +198,7 @@ class ClienteProfileViewController: UIViewController {
             cameraButton.widthAnchor.constraint(equalToConstant: 28),
             cameraButton.heightAnchor.constraint(equalToConstant: 28),
 
-            nombreLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
+            nombreLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 150),
             nombreLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             nombreLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
 
@@ -206,9 +217,10 @@ class ClienteProfileViewController: UIViewController {
             editarButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             editarButton.heightAnchor.constraint(equalToConstant: 50),
 
-            configuracionButton.topAnchor.constraint(equalTo: editarButton.bottomAnchor, constant: 12),
+            configuracionButton.topAnchor.constraint(equalTo: editarButton.bottomAnchor, constant: 16),
             configuracionButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            configuracionButton.heightAnchor.constraint(equalToConstant: 44),
+            configuracionButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            configuracionButton.heightAnchor.constraint(equalToConstant: 54),
 
             logoutButton.topAnchor.constraint(equalTo: configuracionButton.bottomAnchor, constant: 4),
             logoutButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
@@ -216,8 +228,87 @@ class ClienteProfileViewController: UIViewController {
             logoutButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
         ])
 
+        // Contenido del botón Editar Perfil
+        let pencilIcon = UIImageView(image: UIImage(systemName: "pencil"))
+        pencilIcon.tintColor = .white
+        pencilIcon.contentMode = .scaleAspectFit
+        pencilIcon.isUserInteractionEnabled = false
+        pencilIcon.translatesAutoresizingMaskIntoConstraints = false
+
+        let editarStack = UIStackView(arrangedSubviews: [pencilIcon, editarTitleLabel])
+        editarStack.axis = .horizontal
+        editarStack.spacing = 10
+        editarStack.alignment = .center
+        editarStack.isUserInteractionEnabled = false
+        editarStack.translatesAutoresizingMaskIntoConstraints = false
+
+        editarButton.addSubview(editarStack)
+        NSLayoutConstraint.activate([
+            editarStack.centerXAnchor.constraint(equalTo: editarButton.centerXAnchor),
+            editarStack.centerYAnchor.constraint(equalTo: editarButton.centerYAnchor),
+            pencilIcon.widthAnchor.constraint(equalToConstant: 18),
+            pencilIcon.heightAnchor.constraint(equalToConstant: 18),
+        ])
+
+        // Subviews del botón configuración
+        let gearContainer = UIView()
+        gearContainer.backgroundColor = UIColor.systemGray5
+        gearContainer.layer.cornerRadius = 8
+        gearContainer.isUserInteractionEnabled = false
+        gearContainer.translatesAutoresizingMaskIntoConstraints = false
+
+        let gearIcon = UIImageView(image: UIImage(systemName: "gearshape.fill"))
+        gearIcon.tintColor = .systemGray
+        gearIcon.contentMode = .scaleAspectFit
+        gearIcon.isUserInteractionEnabled = false
+        gearIcon.translatesAutoresizingMaskIntoConstraints = false
+        gearContainer.addSubview(gearIcon)
+
+        let configTitleLabel = UILabel()
+        configTitleLabel.text = "Configuración"
+        configTitleLabel.font = UIFont.systemFont(ofSize: 16)
+        configTitleLabel.textColor = .label
+        configTitleLabel.isUserInteractionEnabled = false
+        configTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let chevronIcon = UIImageView(image: UIImage(systemName: "chevron.right"))
+        chevronIcon.tintColor = .systemGray3
+        chevronIcon.contentMode = .scaleAspectFit
+        chevronIcon.isUserInteractionEnabled = false
+        chevronIcon.translatesAutoresizingMaskIntoConstraints = false
+
+        configuracionButton.addSubview(gearContainer)
+        configuracionButton.addSubview(configTitleLabel)
+        configuracionButton.addSubview(chevronIcon)
+
+        NSLayoutConstraint.activate([
+            gearContainer.leadingAnchor.constraint(equalTo: configuracionButton.leadingAnchor, constant: 16),
+            gearContainer.centerYAnchor.constraint(equalTo: configuracionButton.centerYAnchor),
+            gearContainer.widthAnchor.constraint(equalToConstant: 34),
+            gearContainer.heightAnchor.constraint(equalToConstant: 34),
+
+            gearIcon.centerXAnchor.constraint(equalTo: gearContainer.centerXAnchor),
+            gearIcon.centerYAnchor.constraint(equalTo: gearContainer.centerYAnchor),
+            gearIcon.widthAnchor.constraint(equalToConstant: 20),
+            gearIcon.heightAnchor.constraint(equalToConstant: 20),
+
+            configTitleLabel.leadingAnchor.constraint(equalTo: gearContainer.trailingAnchor, constant: 14),
+            configTitleLabel.centerYAnchor.constraint(equalTo: configuracionButton.centerYAnchor),
+
+            chevronIcon.trailingAnchor.constraint(equalTo: configuracionButton.trailingAnchor, constant: -16),
+            chevronIcon.centerYAnchor.constraint(equalTo: configuracionButton.centerYAnchor),
+            chevronIcon.widthAnchor.constraint(equalToConstant: 10),
+            chevronIcon.heightAnchor.constraint(equalToConstant: 16),
+        ])
+
         editarButton.addTarget(self, action: #selector(editarTapped), for: .touchUpInside)
+        configuracionButton.addTarget(self, action: #selector(configuracionTapped), for: .touchUpInside)
         logoutButton.addTarget(self, action: #selector(logoutTapped), for: .touchUpInside)
+
+        for btn in [editarButton, configuracionButton] {
+            btn.addTarget(self, action: #selector(buttonPressed(_:)), for: .touchDown)
+            btn.addTarget(self, action: #selector(buttonReleased(_:)), for: [.touchUpInside, .touchUpOutside, .touchCancel])
+        }
     }
 
     private func configure() {
@@ -251,6 +342,27 @@ class ClienteProfileViewController: UIViewController {
     }
 
     // MARK: - Actions
+    @objc private func buttonPressed(_ sender: UIButton) {
+        UIView.animate(withDuration: 0.1) {
+            sender.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
+        }
+    }
+
+    @objc private func buttonReleased(_ sender: UIButton) {
+        UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.5, initialSpringVelocity: 3, options: []) {
+            sender.transform = .identity
+        }
+    }
+
+    @objc private func configuracionTapped() {
+        let alert = UIAlertController(title: "Configuración", message: nil, preferredStyle: .actionSheet)
+        alert.addAction(UIAlertAction(title: "Notificaciones", style: .default))
+        alert.addAction(UIAlertAction(title: "Privacidad", style: .default))
+        alert.addAction(UIAlertAction(title: "Acerca de Servify", style: .default))
+        alert.addAction(UIAlertAction(title: "Cancelar", style: .cancel))
+        present(alert, animated: true)
+    }
+
     @objc private func editarTapped() {
         presentEditModal()
     }
@@ -295,14 +407,13 @@ class ClienteProfileViewController: UIViewController {
             let ubicacion = alert.textFields?[2].text ?? ""
 
             self.editarButton.isEnabled = false
-            let originalTitle = self.editarButton.title(for: .normal)
-            self.editarButton.setTitle("Guardando...", for: .normal)
+            self.editarTitleLabel.text = "Guardando..."
 
-            APIManager.shared.updatePerfil(userId: currentUser.id, nombre: nombre, telefono: telefono.isEmpty ? nil : telefono, correo: nil) { [weak self] result in
+            APIManager.shared.updatePerfil(userId: currentUser.userId ?? 0, nombre: nombre, telefono: telefono.isEmpty ? nil : telefono, correo: nil) { [weak self] result in
                 DispatchQueue.main.async {
                     guard let self = self else { return }
                     self.editarButton.isEnabled = true
-                    self.editarButton.setTitle(originalTitle, for: .normal)
+                    self.editarTitleLabel.text = "Editar Perfil"
 
                     switch result {
                     case .success:

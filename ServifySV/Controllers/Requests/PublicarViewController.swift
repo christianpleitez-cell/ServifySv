@@ -38,11 +38,54 @@ class PublicarViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         setupCategoriaPicker()
+        setupKeyboardHandling()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = false
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    private func setupKeyboardHandling() {
+        scrollView.keyboardDismissMode = .onDrag
+
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)),
+                                               name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)),
+                                               name: UIResponder.keyboardWillHideNotification, object: nil)
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard let info = notification.userInfo,
+              let keyboardFrame = info[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+              let duration = info[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double else { return }
+
+        let keyboardHeight = keyboardFrame.height
+        UIView.animate(withDuration: duration) {
+            self.scrollView.contentInset.bottom = keyboardHeight
+            self.scrollView.verticalScrollIndicatorInsets.bottom = keyboardHeight
+        }
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        guard let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double else { return }
+        UIView.animate(withDuration: duration) {
+            self.scrollView.contentInset.bottom = 0
+            self.scrollView.verticalScrollIndicatorInsets.bottom = 0
+        }
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
     }
 
     private func setupUI() {
@@ -51,6 +94,7 @@ class PublicarViewController: UIViewController {
         navigationController?.navigationBar.prefersLargeTitles = true
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.alwaysBounceVertical = true
         contentView.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(scrollView)
@@ -69,8 +113,8 @@ class PublicarViewController: UIViewController {
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(subtitleLabel)
 
-        setupFotoUpload()
         contentView.addSubview(fotoUploadView)
+        setupFotoUpload()
 
         contentView.addSubview(tituloField)
         contentView.addSubview(categoriaField)
@@ -91,11 +135,11 @@ class PublicarViewController: UIViewController {
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
 
             titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
             titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
@@ -230,7 +274,7 @@ class PublicarViewController: UIViewController {
             return
         }
 
-        guard let profesionalId = AuthManager.shared.currentUser?.id else { return }
+        guard let profesionalId = AuthManager.shared.currentUser?.id_profesional else { return }
 
         publicarButton.isEnabled = false
         let originalTitle = publicarButton.title(for: .normal)
@@ -252,7 +296,12 @@ class PublicarViewController: UIViewController {
                 case .success:
                     self?.showAlert(title: "Éxito", message: "Tu servicio ha sido publicado exitosamente")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                        self?.navigationController?.popViewController(animated: true)
+                        self?.tituloTextField.text = ""
+                        self?.categoriaTextField.text = ""
+                        self?.descripcionTextView.text = "Describe tu experiencia, especialidades y qué servicios ofreces..."
+                        self?.descripcionTextView.textColor = .systemGray
+                        self?.precioTextField.text = ""
+                        self?.tabBarController?.selectedIndex = 0
                     }
 
                 case .failure(let error):

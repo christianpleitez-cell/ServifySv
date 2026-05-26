@@ -113,10 +113,42 @@ class ProfesionalDetailViewController: UIViewController {
 
     private let reseniasTitleLabel: UILabel = {
         let l = UILabel()
-        l.text = "Reseñas (3)"
+        l.text = "Reseñas"
         l.font = UIFont.boldSystemFont(ofSize: 16)
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
+    }()
+
+    private let ratingOverviewCard: UIView = {
+        let v = UIView()
+        v.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.07)
+        v.layer.cornerRadius = 12
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+
+    private let ratingStarsLabel: UILabel = {
+        let l = UILabel()
+        l.font = UIFont.systemFont(ofSize: 28)
+        l.textAlignment = .center
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
+    private let ratingTextLabel: UILabel = {
+        let l = UILabel()
+        l.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        l.textColor = .secondaryLabel
+        l.textAlignment = .center
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
+    private let loadingIndicator: UIActivityIndicatorView = {
+        let ai = UIActivityIndicatorView(style: .medium)
+        ai.hidesWhenStopped = true
+        ai.translatesAutoresizingMaskIntoConstraints = false
+        return ai
     }()
 
     private let reseniasStackView: UIStackView = {
@@ -217,7 +249,12 @@ class ProfesionalDetailViewController: UIViewController {
         contentView.addSubview(precioButton)
         contentView.addSubview(contactoTitleLabel)
         contentView.addSubview(contactoStackView)
+        ratingOverviewCard.addSubview(ratingStarsLabel)
+        ratingOverviewCard.addSubview(ratingTextLabel)
+
         contentView.addSubview(reseniasTitleLabel)
+        contentView.addSubview(ratingOverviewCard)
+        contentView.addSubview(loadingIndicator)
         contentView.addSubview(reseniasStackView)
 
         if !isProfessionalProfile {
@@ -232,11 +269,11 @@ class ProfesionalDetailViewController: UIViewController {
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
 
             headerImageView.topAnchor.constraint(equalTo: contentView.topAnchor),
             headerImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
@@ -280,7 +317,21 @@ class ProfesionalDetailViewController: UIViewController {
             reseniasTitleLabel.topAnchor.constraint(equalTo: contactoStackView.bottomAnchor, constant: 24),
             reseniasTitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
 
-            reseniasStackView.topAnchor.constraint(equalTo: reseniasTitleLabel.bottomAnchor, constant: 12),
+            ratingOverviewCard.topAnchor.constraint(equalTo: reseniasTitleLabel.bottomAnchor, constant: 12),
+            ratingOverviewCard.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            ratingOverviewCard.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+
+            ratingStarsLabel.topAnchor.constraint(equalTo: ratingOverviewCard.topAnchor, constant: 14),
+            ratingStarsLabel.centerXAnchor.constraint(equalTo: ratingOverviewCard.centerXAnchor),
+
+            ratingTextLabel.topAnchor.constraint(equalTo: ratingStarsLabel.bottomAnchor, constant: 4),
+            ratingTextLabel.centerXAnchor.constraint(equalTo: ratingOverviewCard.centerXAnchor),
+            ratingTextLabel.bottomAnchor.constraint(equalTo: ratingOverviewCard.bottomAnchor, constant: -14),
+
+            loadingIndicator.topAnchor.constraint(equalTo: ratingOverviewCard.bottomAnchor, constant: 20),
+            loadingIndicator.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+
+            reseniasStackView.topAnchor.constraint(equalTo: ratingOverviewCard.bottomAnchor, constant: 16),
             reseniasStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             reseniasStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
         ])
@@ -318,42 +369,72 @@ class ProfesionalDetailViewController: UIViewController {
         let initials = nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
         avatarLabel.text = String(initials.prefix(2))
         nombreLabel.text = nombre
-        especialidadLabel.text = profesional.especialidad
         let rating = profesional.calificacionPromedio ?? 0.0
         let totalResenas = profesional.totalCalificaciones ?? 0
         ratingLabel.text = "⭐ \(String(format: "%.1f", rating)) • \(totalResenas) reseñas"
-        descripcionLabel.text = profesional.descripcion
 
         if let servicio = profesional.servicios?.first {
-            let precioText = String(format: "Tarifa por día\n$%.0f", servicio.precioReferencia)
-            precioButton.setAttributedTitle(NSAttributedString(
-                string: precioText,
-                attributes: [.font: UIFont.systemFont(ofSize: 12), .foregroundColor: UIColor.white]
-            ), for: .normal)
+            especialidadLabel.text = servicio.nombreServicio
+            descripcionLabel.text = servicio.descripcion ?? profesional.descripcion ?? "Sin descripción"
+            let precioText = String(format: "Tarifa por día  $%.0f", servicio.precioReferencia)
+            precioButton.setTitle(precioText, for: .normal)
+            precioButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15)
+        } else {
+            especialidadLabel.text = profesional.especialidad
+            descripcionLabel.text = profesional.descripcion ?? "Sin descripción"
         }
 
-        let categoriaStr = profesional.servicios?.first?.categoria
-        headerImageView.image = getImageForCategory(categoriaStr.flatMap { CategoriaServicio(rawValue: $0) })
+        headerImageView.image = nil
+        headerImageView.backgroundColor = UIColor(red: 0.72, green: 0.88, blue: 0.98, alpha: 1)
 
+        solicitarTextView.delegate = self
         addContactInfo()
     }
 
     private func loadResenas() {
+        loadingIndicator.startAnimating()
+        reseniasStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+        // Mostrar rating inicial desde el objeto profesional mientras carga
+        updateRatingCard(promedio: profesional.calificacionPromedio ?? 0,
+                         total: profesional.totalCalificaciones ?? 0)
+
         APIManager.shared.getResenasProfesional(profesionalId: profesional.id) { [weak self] result in
             DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.loadingIndicator.stopAnimating()
+
                 switch result {
                 case .success(let response):
-                    self?.resenas = response.resenas
-                    self?.reseniasTitleLabel.text = "Reseñas (\(response.resenas.count))"
-                    self?.reseniasStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-                    self?.addResenas()
+                    self.resenas = response.resenas
+                    self.reseniasTitleLabel.text = "Reseñas (\(response.resenas.count))"
+                    if let stats = response.estadisticas {
+                        self.updateRatingCard(promedio: stats.calificacionPromedio,
+                                             total: stats.totalResenas)
+                    }
+                    self.reseniasStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+                    self.addResenas()
 
                 case .failure:
-                    self?.resenas = []
-                    self?.reseniasTitleLabel.text = "Reseñas (0)"
-                    self?.reseniasStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+                    self.resenas = []
+                    self.reseniasTitleLabel.text = "Reseñas"
+                    self.reseniasStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+                    self.addResenas()
                 }
             }
+        }
+    }
+
+    private func updateRatingCard(promedio: Double, total: Int) {
+        let filled = min(5, max(0, Int(promedio.rounded())))
+        ratingStarsLabel.text = String(repeating: "★", count: filled)
+                              + String(repeating: "☆", count: 5 - filled)
+        if total == 0 {
+            ratingTextLabel.text = "Sin calificaciones aún"
+        } else {
+            ratingTextLabel.text = String(format: "%.1f de 5 · %d %@",
+                                          promedio, total,
+                                          total == 1 ? "reseña" : "reseñas")
         }
     }
 
@@ -384,114 +465,96 @@ class ProfesionalDetailViewController: UIViewController {
     }
 
     private func addResenas() {
+        guard !resenas.isEmpty else {
+            let empty = UILabel()
+            empty.text = "Aún no tiene reseñas"
+            empty.font = UIFont.systemFont(ofSize: 14)
+            empty.textColor = .secondaryLabel
+            empty.textAlignment = .center
+            reseniasStackView.addArrangedSubview(empty)
+            return
+        }
+
         for resena in resenas {
-            let nombre = "Usuario"
-            let stars = String(repeating: "⭐", count: resena.calificacion) + String(repeating: "☆", count: 5 - resena.calificacion)
-            let fecha = resena.fechaResena ?? ""
-            let comentario = resena.comentario
-            let container = UIView()
-            container.translatesAutoresizingMaskIntoConstraints = false
-
-            let avatarReview = UILabel()
-            avatarReview.text = String(nombre.prefix(1))
-            avatarReview.font = UIFont.boldSystemFont(ofSize: 12)
-            avatarReview.textColor = .white
-            avatarReview.textAlignment = .center
-            avatarReview.backgroundColor = .systemBlue
-            avatarReview.layer.cornerRadius = 16
-            avatarReview.clipsToBounds = true
-            avatarReview.translatesAutoresizingMaskIntoConstraints = false
-            avatarReview.widthAnchor.constraint(equalToConstant: 32).isActive = true
-            avatarReview.heightAnchor.constraint(equalToConstant: 32).isActive = true
-
-            let nombreLabel = UILabel()
-            nombreLabel.text = nombre
-            nombreLabel.font = UIFont.boldSystemFont(ofSize: 13)
-            nombreLabel.translatesAutoresizingMaskIntoConstraints = false
-
-            let fechaLabel = UILabel()
-            fechaLabel.text = fecha
-            fechaLabel.font = UIFont.systemFont(ofSize: 11)
-            fechaLabel.textColor = .systemGray
-            fechaLabel.translatesAutoresizingMaskIntoConstraints = false
-
-            let starsLabel = UILabel()
-            starsLabel.text = stars
-            starsLabel.font = UIFont.systemFont(ofSize: 11)
-            starsLabel.translatesAutoresizingMaskIntoConstraints = false
-
-            let comentarioLabel = UILabel()
-            comentarioLabel.text = comentario
-            comentarioLabel.font = UIFont.systemFont(ofSize: 12)
-            comentarioLabel.textColor = .label
-            comentarioLabel.numberOfLines = 0
-            comentarioLabel.translatesAutoresizingMaskIntoConstraints = false
-
-            container.addSubview(avatarReview)
-            container.addSubview(nombreLabel)
-            container.addSubview(fechaLabel)
-            container.addSubview(starsLabel)
-            container.addSubview(comentarioLabel)
-
-            NSLayoutConstraint.activate([
-                avatarReview.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-                avatarReview.topAnchor.constraint(equalTo: container.topAnchor),
-
-                nombreLabel.leadingAnchor.constraint(equalTo: avatarReview.trailingAnchor, constant: 8),
-                nombreLabel.topAnchor.constraint(equalTo: container.topAnchor),
-
-                fechaLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                fechaLabel.topAnchor.constraint(equalTo: container.topAnchor),
-
-                starsLabel.leadingAnchor.constraint(equalTo: avatarReview.trailingAnchor, constant: 8),
-                starsLabel.topAnchor.constraint(equalTo: nombreLabel.bottomAnchor, constant: 2),
-
-                comentarioLabel.leadingAnchor.constraint(equalTo: avatarReview.trailingAnchor, constant: 8),
-                comentarioLabel.topAnchor.constraint(equalTo: starsLabel.bottomAnchor, constant: 4),
-                comentarioLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                comentarioLabel.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            ])
-
-            reseniasStackView.addArrangedSubview(container)
+            reseniasStackView.addArrangedSubview(makeResenaCard(resena: resena))
         }
     }
 
-    private func getImageForCategory(_ categoria: CategoriaServicio?) -> UIImage? {
-        guard let categoria = categoria else { return nil }
+    private func makeResenaCard(resena: Resena) -> UIView {
+        let nombre = resena.cliente?.nombre ?? "Cliente"
+        let initial = String(nombre.prefix(1)).uppercased()
+        let filled = min(5, max(0, resena.calificacion))
+        let stars = String(repeating: "★", count: filled)
+                  + String(repeating: "☆", count: 5 - filled)
 
-        let emoji: String
-        switch categoria {
-        case .electricidad:
-            emoji = "⚡"
-        case .plomeria:
-            emoji = "🚰"
-        case .albanileria:
-            emoji = "👷"
-        case .pintura:
-            emoji = "🎨"
-        case .carpinteria:
-            emoji = "🪛"
-        case .limpieza:
-            emoji = "🧹"
-        case .jardineria:
-            emoji = "🌱"
-        case .otro:
-            emoji = "🔧"
-        }
+        let card = UIView()
+        card.backgroundColor = .white
+        card.layer.cornerRadius = 12
+        card.layer.shadowColor = UIColor.black.cgColor
+        card.layer.shadowOpacity = 0.07
+        card.layer.shadowOffset = CGSize(width: 0, height: 2)
+        card.layer.shadowRadius = 4
+        card.translatesAutoresizingMaskIntoConstraints = false
 
-        let label = UILabel()
-        label.text = emoji
-        label.font = UIFont.systemFont(ofSize: 100)
-        label.backgroundColor = UIColor.systemGray5
-        label.textAlignment = .center
-        label.frame = CGRect(x: 0, y: 0, width: 220, height: 220)
+        let avatarView = UILabel()
+        avatarView.text = initial
+        avatarView.font = UIFont.boldSystemFont(ofSize: 13)
+        avatarView.textColor = .white
+        avatarView.textAlignment = .center
+        avatarView.backgroundColor = .systemBlue
+        avatarView.layer.cornerRadius = 17
+        avatarView.clipsToBounds = true
+        avatarView.translatesAutoresizingMaskIntoConstraints = false
 
-        let renderer = UIGraphicsImageRenderer(size: label.frame.size)
-        return renderer.image { context in
-            UIColor.systemGray5.setFill()
-            context.fill(label.bounds)
-            label.layer.render(in: context.cgContext)
-        }
+        let nombreLabel = UILabel()
+        nombreLabel.text = nombre
+        nombreLabel.font = UIFont.boldSystemFont(ofSize: 13)
+        nombreLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let fechaLabel = UILabel()
+        fechaLabel.text = resena.fechaResena ?? ""
+        fechaLabel.font = UIFont.systemFont(ofSize: 11)
+        fechaLabel.textColor = .secondaryLabel
+        fechaLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let starsLabel = UILabel()
+        starsLabel.text = stars
+        starsLabel.font = UIFont.systemFont(ofSize: 14)
+        starsLabel.textColor = .systemYellow
+        starsLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let comentarioLabel = UILabel()
+        let hasComentario = !(resena.comentario?.isEmpty ?? true)
+        comentarioLabel.text = hasComentario ? resena.comentario : "Sin comentario"
+        comentarioLabel.font = UIFont.systemFont(ofSize: 13)
+        comentarioLabel.textColor = hasComentario ? .label : .secondaryLabel
+        comentarioLabel.numberOfLines = 0
+        comentarioLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        [avatarView, nombreLabel, fechaLabel, starsLabel, comentarioLabel].forEach { card.addSubview($0) }
+
+        NSLayoutConstraint.activate([
+            avatarView.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            avatarView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            avatarView.widthAnchor.constraint(equalToConstant: 34),
+            avatarView.heightAnchor.constraint(equalToConstant: 34),
+
+            nombreLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            nombreLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 10),
+
+            fechaLabel.centerYAnchor.constraint(equalTo: nombreLabel.centerYAnchor),
+            fechaLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+
+            starsLabel.topAnchor.constraint(equalTo: nombreLabel.bottomAnchor, constant: 2),
+            starsLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 10),
+
+            comentarioLabel.topAnchor.constraint(equalTo: starsLabel.bottomAnchor, constant: 6),
+            comentarioLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 10),
+            comentarioLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+            comentarioLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+        ])
+
+        return card
     }
 
     // MARK: - Actions
@@ -500,7 +563,73 @@ class ProfesionalDetailViewController: UIViewController {
     }
 
     @objc private func enviarTapped() {
-        let nuevaSolicitudVC = NuevaSolicitudViewController(profesional: profesional)
-        navigationController?.pushViewController(nuevaSolicitudVC, animated: true)
+        guard let texto = solicitarTextView.text,
+              !texto.isEmpty,
+              texto != "Describe tu proyecto o necesidad..." else {
+            showAlert(title: "Error", message: "Por favor describe lo que necesitas")
+            return
+        }
+
+        if let u = AuthManager.shared.currentUser {
+            print("[Debug] currentUser id=\(u.id ?? -1) id_usuario=\(u.id_usuario ?? -1) id_profesional=\(u.id_profesional ?? -1) tipo=\(u.tipo_usuario)")
+        } else {
+            print("[Debug] currentUser es nil")
+        }
+
+        guard let clienteId = AuthManager.shared.currentUser?.userId else {
+            showAlert(title: "Error", message: "Debes iniciar sesión para enviar una solicitud")
+            return
+        }
+
+        guard let servicio = profesional.servicios?.first else { return }
+
+        enviarButton.isEnabled = false
+        enviarButton.setTitle("Enviando...", for: .normal)
+
+        APIManager.shared.createSolicitud(
+            idCliente: clienteId,
+            idProfesional: profesional.id,
+            idServicio: servicio.id,
+            descripcion: texto
+        ) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.enviarButton.isEnabled = true
+                self?.enviarButton.setTitle("Enviar Solicitud", for: .normal)
+
+                switch result {
+                case .success:
+                    let nombre = self?.profesional.usuario?.nombre ?? "el profesional"
+                    self?.showAlert(title: "¡Solicitud Enviada!", message: "Tu solicitud ha sido enviada a \(nombre). Te notificaremos cuando la acepte.")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        self?.navigationController?.popViewController(animated: true)
+                    }
+                case .failure(let error):
+                    self?.showAlert(title: "Error", message: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+}
+
+// MARK: - UITextViewDelegate
+extension ProfesionalDetailViewController: UITextViewDelegate {
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        if textView.textColor == .systemGray {
+            textView.text = ""
+            textView.textColor = .label
+        }
+    }
+
+    func textViewDidEndEditing(_ textView: UITextView) {
+        if textView.text.isEmpty {
+            textView.text = "Describe tu proyecto o necesidad..."
+            textView.textColor = .systemGray
+        }
     }
 }

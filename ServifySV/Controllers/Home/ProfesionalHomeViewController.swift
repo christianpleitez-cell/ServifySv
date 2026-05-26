@@ -3,6 +3,8 @@ import UIKit
 class ProfesionalHomeViewController: UIViewController {
 
     private var servicios: [Servicio] = []
+    private var calificacionPromedio: Double = 0
+    private var totalCalificaciones: Int = 0
 
     private let tableView: UITableView = {
         let tv = UITableView()
@@ -47,12 +49,15 @@ class ProfesionalHomeViewController: UIViewController {
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(subtitleLabel)
 
+        let initials = userName.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
         let avatarButton = UIButton(type: .system)
         avatarButton.backgroundColor = .systemBlue
-        avatarButton.setTitle("J", for: .normal)
+        avatarButton.setTitle(String(initials.prefix(2)).uppercased(), for: .normal)
         avatarButton.setTitleColor(.white, for: .normal)
         avatarButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
         avatarButton.layer.cornerRadius = 20
+        avatarButton.layer.borderWidth = 2
+        avatarButton.layer.borderColor = UIColor.white.withAlphaComponent(0.4).cgColor
         avatarButton.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(avatarButton)
 
@@ -62,6 +67,7 @@ class ProfesionalHomeViewController: UIViewController {
 
             subtitleLabel.topAnchor.constraint(equalTo: holaLabel.bottomAnchor, constant: 4),
             subtitleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            subtitleLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8),
 
             avatarButton.centerYAnchor.constraint(equalTo: holaLabel.centerYAnchor),
             avatarButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
@@ -90,7 +96,7 @@ class ProfesionalHomeViewController: UIViewController {
     }
 
     private func loadServicios() {
-        guard let profesionalId = AuthManager.shared.currentUser?.id else { return }
+        guard let profesionalId = AuthManager.shared.currentUser?.id_profesional else { return }
 
         APIManager.shared.getMisServicios(profesionalId: profesionalId) { [weak self] result in
             DispatchQueue.main.async {
@@ -100,6 +106,16 @@ class ProfesionalHomeViewController: UIViewController {
                     self?.tableView.reloadData()
                 case .failure:
                     self?.servicios = []
+                    self?.tableView.reloadData()
+                }
+            }
+        }
+
+        APIManager.shared.getResenasProfesional(profesionalId: profesionalId) { [weak self] result in
+            DispatchQueue.main.async {
+                if case .success(let response) = result, let stats = response.estadisticas {
+                    self?.calificacionPromedio = stats.calificacionPromedio
+                    self?.totalCalificaciones = stats.totalResenas
                     self?.tableView.reloadData()
                 }
             }
@@ -117,22 +133,23 @@ extension ProfesionalHomeViewController: UITableViewDataSource, UITableViewDeleg
         let cell = tableView.dequeueReusableCell(withIdentifier: ProfesionalCell.identifier, for: indexPath) as! ProfesionalCell
 
         if let currentUser = AuthManager.shared.currentUser {
+            let profesionalId = currentUser.id_profesional ?? 0
             let profesional = Profesional(
-                id: currentUser.id,
+                id: profesionalId,
                 usuario: User(
-                    id: currentUser.id,
+                    id: profesionalId,
                     nombre: currentUser.nombre,
                     correo: currentUser.correo,
                     tipoUsuario: currentUser.tipo_usuario == "profesional" ? .profesional : .cliente,
-                    fechaRegistro: Date(),
+                    fechaRegistro: nil,
                     fotoPerfil: nil
                 ),
                 especialidad: currentUser.nombre,
                 descripcion: "Mi servicio",
                 experiencia: 0,
                 estadoVerificacion: "Verificado",
-                calificacionPromedio: 0,
-                totalCalificaciones: 0,
+                calificacionPromedio: calificacionPromedio,
+                totalCalificaciones: totalCalificaciones,
                 servicios: [servicios[indexPath.row]]
             )
             cell.configure(with: profesional)

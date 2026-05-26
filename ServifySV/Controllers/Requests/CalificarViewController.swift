@@ -76,6 +76,19 @@ class CalificarViewController: UIViewController {
     required init?(coder: NSCoder) { fatalError() }
 
     // MARK: - Lifecycle
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.navigationBar.isHidden = false
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Restaurar estado oculto si regresamos a SolicitudDetailViewController
+        if navigationController?.topViewController is SolicitudDetailViewController {
+            navigationController?.navigationBar.isHidden = true
+        }
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -157,7 +170,7 @@ class CalificarViewController: UIViewController {
     }
 
     @objc private func enviarTapped() {
-        guard let clienteId = AuthManager.shared.currentUser?.id else { return }
+        guard let clienteId = AuthManager.shared.currentUser?.userId else { return }
 
         let comentario = comentarioTextView.text ?? ""
 

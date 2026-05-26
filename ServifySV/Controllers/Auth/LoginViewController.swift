@@ -2,8 +2,6 @@ import UIKit
 
 class LoginViewController: UIViewController {
 
-    private var selectedUserType: String = "cliente"
-
     // MARK: - UI Components
     private let logoIcon: UIView = {
         let container = UIView()
@@ -62,52 +60,6 @@ class LoginViewController: UIViewController {
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
-    }()
-
-    private let clienteButton: UIButton = {
-        let btn = UIButton(type: .system)
-        btn.translatesAutoresizingMaskIntoConstraints = false
-        btn.backgroundColor = .white
-        btn.layer.borderColor = UIColor.systemBlue.cgColor
-        btn.layer.borderWidth = 2
-        btn.layer.cornerRadius = 12
-        btn.tag = 0
-
-        let config = UIButton.Configuration.plain()
-        var container = AttributeContainer()
-        container.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        container.foregroundColor = .systemBlue
-
-        var fullConfig = config
-        fullConfig.attributedTitle = AttributedString("👤\nCliente", attributes: container)
-        fullConfig.imagePadding = 8
-        fullConfig.titleAlignment = .center
-        btn.configuration = fullConfig
-
-        return btn
-    }()
-
-    private let profesionalButton: UIButton = {
-        let btn = UIButton(type: .system)
-        btn.translatesAutoresizingMaskIntoConstraints = false
-        btn.backgroundColor = UIColor(white: 0.95, alpha: 1)
-        btn.layer.borderColor = UIColor.clear.cgColor
-        btn.layer.borderWidth = 2
-        btn.layer.cornerRadius = 12
-        btn.tag = 1
-
-        let config = UIButton.Configuration.plain()
-        var container = AttributeContainer()
-        container.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        container.foregroundColor = .darkGray
-
-        var fullConfig = config
-        fullConfig.attributedTitle = AttributedString("👔\nProfesional", attributes: container)
-        fullConfig.imagePadding = 8
-        fullConfig.titleAlignment = .center
-        btn.configuration = fullConfig
-
-        return btn
     }()
 
     private let emailTextField: UITextField = {
@@ -188,12 +140,6 @@ class LoginViewController: UIViewController {
         view.addSubview(subtitleLabel)
         view.addSubview(cardView)
 
-        let typeSelectorStack = UIStackView(arrangedSubviews: [clienteButton, profesionalButton])
-        typeSelectorStack.axis = .horizontal
-        typeSelectorStack.spacing = 16
-        typeSelectorStack.distribution = .fillEqually
-        typeSelectorStack.translatesAutoresizingMaskIntoConstraints = false
-
         let emailLabelStack = UIStackView()
         emailLabelStack.axis = .vertical
         emailLabelStack.spacing = 4
@@ -219,7 +165,7 @@ class LoginViewController: UIViewController {
         passwordLabelStack.addArrangedSubview(passwordTextField)
 
         let cardStackView = UIStackView(arrangedSubviews: [
-            cardTitleLabel, typeSelectorStack, emailLabelStack, passwordLabelStack, loginButton, registerButton
+            cardTitleLabel, emailLabelStack, passwordLabelStack, loginButton, registerButton
         ])
         cardStackView.axis = .vertical
         cardStackView.spacing = 16
@@ -250,8 +196,6 @@ class LoginViewController: UIViewController {
             cardStackView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
             cardStackView.bottomAnchor.constraint(equalTo: cardView.bottomAnchor),
 
-            clienteButton.heightAnchor.constraint(equalToConstant: 80),
-            profesionalButton.heightAnchor.constraint(equalToConstant: 80),
             emailTextField.heightAnchor.constraint(equalToConstant: 44),
             passwordTextField.heightAnchor.constraint(equalToConstant: 44),
             loginButton.heightAnchor.constraint(equalToConstant: 50),
@@ -261,24 +205,9 @@ class LoginViewController: UIViewController {
     private func setupActions() {
         loginButton.addTarget(self, action: #selector(loginTapped), for: .touchUpInside)
         registerButton.addTarget(self, action: #selector(registerTapped), for: .touchUpInside)
-        clienteButton.addTarget(self, action: #selector(userTypeSelected(_:)), for: .touchUpInside)
-        profesionalButton.addTarget(self, action: #selector(userTypeSelected(_:)), for: .touchUpInside)
     }
 
     // MARK: - Actions
-    @objc private func userTypeSelected(_ sender: UIButton) {
-        selectedUserType = sender.tag == 0 ? "cliente" : "profesional"
-
-        let isCliente = sender.tag == 0
-        clienteButton.backgroundColor = isCliente ? .white : UIColor(white: 0.95, alpha: 1)
-        clienteButton.layer.borderColor = isCliente ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
-        clienteButton.layer.borderWidth = isCliente ? 2 : 0
-
-        profesionalButton.backgroundColor = isCliente ? UIColor(white: 0.95, alpha: 1) : .white
-        profesionalButton.layer.borderColor = isCliente ? UIColor.clear.cgColor : UIColor.systemBlue.cgColor
-        profesionalButton.layer.borderWidth = isCliente ? 0 : 2
-    }
-
     @objc private func loginTapped() {
         // Validate inputs
         guard let email = emailTextField.text, !email.isEmpty else {
@@ -297,7 +226,7 @@ class LoginViewController: UIViewController {
         loginButton.setTitle("Cargando...", for: .normal)
 
         // Call API
-        APIManager.shared.login(correo: email, contrasena: password, tipoUsuario: selectedUserType) { [weak self] result in
+        APIManager.shared.login(correo: email, contrasena: password) { [weak self] result in
             DispatchQueue.main.async {
                 self?.loginButton.isEnabled = true
                 self?.loginButton.setTitle(originalTitle, for: .normal)

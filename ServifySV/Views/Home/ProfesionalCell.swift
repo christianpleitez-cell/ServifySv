@@ -185,45 +185,10 @@ class ProfesionalCell: UITableViewCell {
 
         if let servicio = profesional.servicios?.first {
             tituloServicioLabel.text = servicio.nombreServicio
-            descripcionLabel.text = "Servicio profesional con más de 10 años de experiencia. Construcción, remodelación, acabados."
-            categoryImageView.image = getImageForCategory(CategoriaServicio(rawValue: servicio.categoria) ?? .otro)
+            descripcionLabel.text = servicio.descripcion ?? ""
+            categoryImageView.image = nil
+            categoryImageView.backgroundColor = UIColor(red: 0.72, green: 0.88, blue: 0.98, alpha: 1)
             precioLabel.text = "$\(String(format: "%.0f", servicio.precioReferencia))/día"
-        }
-    }
-
-    private func getImageForCategory(_ categoria: CategoriaServicio) -> UIImage? {
-        let emoji: String
-        switch categoria {
-        case .electricidad:
-            emoji = "⚡"
-        case .plomeria:
-            emoji = "🚰"
-        case .albanileria:
-            emoji = "👷"
-        case .pintura:
-            emoji = "🎨"
-        case .carpinteria:
-            emoji = "🪛"
-        case .limpieza:
-            emoji = "🧹"
-        case .jardineria:
-            emoji = "🌱"
-        case .otro:
-            emoji = "🔧"
-        }
-
-        let label = UILabel()
-        label.text = emoji
-        label.font = UIFont.systemFont(ofSize: 60)
-        label.backgroundColor = UIColor.systemGray5
-        label.textAlignment = .center
-        label.frame = CGRect(x: 0, y: 0, width: 120, height: 120)
-
-        let renderer = UIGraphicsImageRenderer(size: label.frame.size)
-        return renderer.image { context in
-            UIColor.systemGray5.setFill()
-            context.fill(label.bounds)
-            label.layer.render(in: context.cgContext)
         }
     }
 }

@@ -25,13 +25,13 @@ class HistorialCell: UITableViewCell {
 
     private let precioLabel: UILabel = {
         let l = UILabel()
-        l.font = UIFont.boldSystemFont(ofSize: 16)
+        l.font = UIFont.boldSystemFont(ofSize: 15)
         l.textColor = .systemBlue
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
-    private let profesionalLabel: UILabel = {
+    private let contactoLabel: UILabel = {
         let l = UILabel()
         l.font = UIFont.systemFont(ofSize: 13)
         l.textColor = .systemGray
@@ -47,10 +47,17 @@ class HistorialCell: UITableViewCell {
         return l
     }()
 
-    private let ratingLabel: UILabel = {
+    private let estadoBadge: UIView = {
+        let v = UIView()
+        v.layer.cornerRadius = 8
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+
+    private let estadoLabel: UILabel = {
         let l = UILabel()
-        l.font = UIFont.systemFont(ofSize: 13)
-        l.textColor = .systemYellow
+        l.font = UIFont.boldSystemFont(ofSize: 11)
+        l.textAlignment = .center
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -59,7 +66,7 @@ class HistorialCell: UITableViewCell {
         let l = UILabel()
         l.font = UIFont.systemFont(ofSize: 12)
         l.textColor = .systemBlue
-        l.numberOfLines = 2
+        l.numberOfLines = 1
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -69,7 +76,8 @@ class HistorialCell: UITableViewCell {
         backgroundColor = .clear
         selectionStyle = .none
 
-        [tituloLabel, precioLabel, profesionalLabel, fechaLabel, ratingLabel, comentarioLabel].forEach { cardView.addSubview($0) }
+        estadoBadge.addSubview(estadoLabel)
+        [tituloLabel, precioLabel, contactoLabel, fechaLabel, estadoBadge, comentarioLabel].forEach { cardView.addSubview($0) }
         contentView.addSubview(cardView)
 
         NSLayoutConstraint.activate([
@@ -80,20 +88,27 @@ class HistorialCell: UITableViewCell {
 
             tituloLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 12),
             tituloLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
+            tituloLabel.trailingAnchor.constraint(lessThanOrEqualTo: precioLabel.leadingAnchor, constant: -8),
 
             precioLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 12),
             precioLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
 
-            profesionalLabel.topAnchor.constraint(equalTo: tituloLabel.bottomAnchor, constant: 2),
-            profesionalLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
+            contactoLabel.topAnchor.constraint(equalTo: tituloLabel.bottomAnchor, constant: 4),
+            contactoLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
+            contactoLabel.trailingAnchor.constraint(lessThanOrEqualTo: estadoBadge.leadingAnchor, constant: -8),
 
-            fechaLabel.topAnchor.constraint(equalTo: profesionalLabel.bottomAnchor, constant: 2),
+            estadoBadge.centerYAnchor.constraint(equalTo: contactoLabel.centerYAnchor),
+            estadoBadge.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
+
+            estadoLabel.topAnchor.constraint(equalTo: estadoBadge.topAnchor, constant: 4),
+            estadoLabel.bottomAnchor.constraint(equalTo: estadoBadge.bottomAnchor, constant: -4),
+            estadoLabel.leadingAnchor.constraint(equalTo: estadoBadge.leadingAnchor, constant: 8),
+            estadoLabel.trailingAnchor.constraint(equalTo: estadoBadge.trailingAnchor, constant: -8),
+
+            fechaLabel.topAnchor.constraint(equalTo: contactoLabel.bottomAnchor, constant: 4),
             fechaLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
 
-            ratingLabel.topAnchor.constraint(equalTo: profesionalLabel.topAnchor),
-            ratingLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
-
-            comentarioLabel.topAnchor.constraint(equalTo: fechaLabel.bottomAnchor, constant: 8),
+            comentarioLabel.topAnchor.constraint(equalTo: fechaLabel.bottomAnchor, constant: 6),
             comentarioLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
             comentarioLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
             comentarioLabel.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -12),
@@ -102,12 +117,27 @@ class HistorialCell: UITableViewCell {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func configure(titulo: String, profesional: String, precio: String, fecha: String, rating: String, comentario: String) {
+    func configure(titulo: String, contacto: String, precio: String, fecha: String, estado: String, comentario: String? = nil) {
         tituloLabel.text = titulo
         precioLabel.text = precio
-        profesionalLabel.text = profesional
+        contactoLabel.text = contacto
         fechaLabel.text = fecha
-        ratingLabel.text = rating
         comentarioLabel.text = comentario
+        comentarioLabel.isHidden = comentario == nil
+
+        switch estado {
+        case "completada":
+            estadoLabel.text = "Completado"
+            estadoLabel.textColor = .systemGreen
+            estadoBadge.backgroundColor = UIColor.systemGreen.withAlphaComponent(0.12)
+        case "aceptada":
+            estadoLabel.text = "Activo"
+            estadoLabel.textColor = .systemOrange
+            estadoBadge.backgroundColor = UIColor.systemOrange.withAlphaComponent(0.12)
+        default:
+            estadoLabel.text = estado.capitalized
+            estadoLabel.textColor = .systemGray
+            estadoBadge.backgroundColor = UIColor.systemGray.withAlphaComponent(0.12)
+        }
     }
 }

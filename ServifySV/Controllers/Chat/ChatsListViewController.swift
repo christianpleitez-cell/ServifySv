@@ -44,7 +44,7 @@ class ChatsListViewController: UIViewController {
     }
 
     private func loadChats() {
-        guard let userId = AuthManager.shared.currentUser?.id else { return }
+        guard let userId = AuthManager.shared.currentUser?.id_profesional else { return }
 
         APIManager.shared.getChats(usuarioId: userId) { [weak self] result in
             DispatchQueue.main.async {

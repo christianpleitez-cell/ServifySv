@@ -88,31 +88,39 @@ class SolicitudesViewController: UIViewController {
     }
 
     private func loadSolicitudes() {
-        guard let userId = AuthManager.shared.currentUser?.id else { return }
+        guard let currentUser = AuthManager.shared.currentUser else { return }
 
-        let isProfessional = AuthManager.shared.isProfessional
-
-        if isProfessional {
-            APIManager.shared.getSolicitudesProfesional(profesionalId: userId) { [weak self] result in
+        if AuthManager.shared.isProfessional {
+            guard let profesionalId = currentUser.id_profesional else {
+                print("[Solicitudes] id_profesional es nil para profesional")
+                return
+            }
+            APIManager.shared.getSolicitudesProfesional(profesionalId: profesionalId) { [weak self] result in
                 DispatchQueue.main.async {
                     switch result {
                     case .success(let response):
                         self?.solicitudes = response.solicitudes
                         self?.applyFilter()
-                    case .failure:
+                    case .failure(let error):
+                        print("[Solicitudes] Error profesional: \(error)")
                         self?.solicitudes = []
                         self?.applyFilter()
                     }
                 }
             }
         } else {
-            APIManager.shared.getSolicitudesCliente(clienteId: userId) { [weak self] result in
+            guard let clienteId = currentUser.userId else {
+                print("[Solicitudes] userId es nil para cliente")
+                return
+            }
+            APIManager.shared.getSolicitudesCliente(clienteId: clienteId) { [weak self] result in
                 DispatchQueue.main.async {
                     switch result {
                     case .success(let response):
                         self?.solicitudes = response.solicitudes
                         self?.applyFilter()
-                    case .failure:
+                    case .failure(let error):
+                        print("[Solicitudes] Error cliente: \(error)")
                         self?.solicitudes = []
                         self?.applyFilter()
                     }

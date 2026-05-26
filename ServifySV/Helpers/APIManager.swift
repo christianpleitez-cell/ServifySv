@@ -114,6 +114,10 @@ final class APIManager {
                 let result = try decoder.decode(T.self, from: data)
                 completion(.success(result))
             } catch {
+                #if DEBUG
+                print("[APIManager] Decoding error for \(T.self): \(error)")
+                print("[APIManager] Raw response: \(String(data: data, encoding: .utf8) ?? "nil")")
+                #endif
                 completion(.failure(.decodingError))
             }
         }.resume()
@@ -121,7 +125,7 @@ final class APIManager {
 
     // MARK: - AUTH Endpoints
 
-    func login(correo: String, contrasena: String, tipoUsuario: String, completion: @escaping (Result<LoginResponse, APIError>) -> Void) {
+    func login(correo: String, contrasena: String, completion: @escaping (Result<LoginResponse, APIError>) -> Void) {
         let body: [String: Any] = [
             "correo": correo,
             "contraseña": contrasena
@@ -360,14 +364,15 @@ struct ProfesionalFullResponse: Codable {
 }
 
 struct MisServiciosResponse: Codable {
-    let success: Bool
+    let success: Bool?
+    let ok: Bool?
     let servicios: [Servicio]
 }
 
 struct CreateServicioResponse: Codable {
-    let success: Bool
-    let message: String
-    let servicio: Servicio
+    let success: Bool?
+    let ok: Bool?
+    let message: String?
 }
 
 struct ProfesionalesListResponse: Codable {
@@ -376,13 +381,14 @@ struct ProfesionalesListResponse: Codable {
 }
 
 struct CreateSolicitudResponse: Codable {
-    let success: Bool
-    let message: String
-    let solicitud: Solicitud
+    let success: Bool?
+    let ok: Bool?
+    let message: String?
 }
 
 struct SolicitudesResponse: Codable {
-    let success: Bool
+    let success: Bool?
+    let ok: Bool?
     let solicitudes: [Solicitud]
 }
 
@@ -407,49 +413,73 @@ struct HistorialClienteResponse: Codable {
 }
 
 struct TrabajosProfesionalResponse: Codable {
-    let success: Bool
+    let success: Bool?
+    let ok: Bool?
     let trabajos: [Solicitud]
-    let total: Int
+    let total: Int?
 }
 
 struct IngresosProfesionalResponse: Codable {
-    let success: Bool
-    let estadisticas: Estadisticas
-    let ingresosPorCategoria: [IngresoPorCategoria]
-    let ingresosPorMes: [IngresoPorMes]
+    let success: Bool?
+    let ok: Bool?
+    let estadisticas: Estadisticas?
+    let ingresosPorCategoria: [IngresoPorCategoria]?
+    let ingresosPorMes: [IngresoPorMes]?
 }
 
 struct Estadisticas: Codable {
     let ingresoTotal: Double
     let totalTrabajosCompletados: Int
-
-    enum CodingKeys: String, CodingKey {
-        case ingresoTotal = "ingresoTotal"
-        case totalTrabajosCompletados = "totalTrabajosCompletados"
-    }
 }
 
 struct IngresoPorCategoria: Codable {
     let categoria: String
     let cantidad: Int
     let total: Double
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        categoria = (try? c.decode(String.self, forKey: .categoria)) ?? ""
+        cantidad = (try? c.decode(Int.self, forKey: .cantidad)) ?? 0
+        if let d = try? c.decode(Double.self, forKey: .total) {
+            total = d
+        } else if let s = try? c.decode(String.self, forKey: .total), let d = Double(s) {
+            total = d
+        } else {
+            total = 0
+        }
+    }
 }
 
 struct IngresoPorMes: Codable {
     let mes: String
     let total: Double
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        mes = (try? c.decode(String.self, forKey: .mes)) ?? ""
+        if let d = try? c.decode(Double.self, forKey: .total) {
+            total = d
+        } else if let s = try? c.decode(String.self, forKey: .total), let d = Double(s) {
+            total = d
+        } else {
+            total = 0
+        }
+    }
 }
 
 struct CreateResenaResponse: Codable {
-    let success: Bool
-    let message: String
-    let resena: Resena
+    let success: Bool?
+    let ok: Bool?
+    let message: String?
+    let resena: Resena?
 }
 
 struct ResenasProfesionalResponse: Codable {
-    let success: Bool
+    let success: Bool?
+    let ok: Bool?
     let resenas: [Resena]
-    let estadisticas: ResenaEstadisticas
+    let estadisticas: ResenaEstadisticas?
 }
 
 struct ResenaEstadisticas: Codable {

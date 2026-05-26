@@ -3,11 +3,10 @@ import UIKit
 class HistorialViewController: UIViewController {
 
     private var trabajos: [Solicitud] = []
-    private var estadisticas: Estadisticas?
+    private var displayedTrabajos: [Solicitud] = []
     private var ingresosPorCategoria: [IngresoPorCategoria] = []
     private var ingresosPorMes: [IngresoPorMes] = []
 
-    // Ingresos tab views
     private var ingresosCardValueLabel: UILabel?
     private var trabajosCardValueLabel: UILabel?
     private var calificacionRatingLabel: UILabel?
@@ -20,9 +19,6 @@ class HistorialViewController: UIViewController {
         sc.translatesAutoresizingMaskIntoConstraints = false
         return sc
     }()
-
-    private let scrollView = UIScrollView()
-    private let contentView = UIView()
 
     private let trabajosTableView: UITableView = {
         let tv = UITableView()
@@ -46,15 +42,55 @@ class HistorialViewController: UIViewController {
         loadHistorial()
     }
 
+    // MARK: - Data loading
+
     private func loadHistorial() {
-        guard let userId = AuthManager.shared.currentUser?.id else { return }
-
-        let isProfessional = AuthManager.shared.isProfessional
-
-        if isProfessional {
-            loadProfesionalHistorial(userId: userId)
+        if AuthManager.shared.isProfessional {
+            guard let profesionalId = AuthManager.shared.currentUser?.id_profesional else { return }
+            loadProfesionalHistorial(profesionalId: profesionalId)
         } else {
-            loadClienteHistorial(userId: userId)
+            guard let clienteId = AuthManager.shared.currentUser?.userId else { return }
+            loadClienteHistorial(userId: clienteId)
+        }
+    }
+
+    private func loadProfesionalHistorial(profesionalId: Int) {
+        // Use the working solicitudes endpoint and filter locally
+        APIManager.shared.getSolicitudesProfesional(profesionalId: profesionalId) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    self?.trabajos = response.solicitudes
+                case .failure:
+                    self?.trabajos = []
+                }
+                self?.applyFilter()
+                self?.computeIngresosFromTrabajos()
+            }
+        }
+
+        // Best-effort: monthly/category breakdown from ingresos endpoint
+        APIManager.shared.getIngresosProfesional(usuarioId: profesionalId) { [weak self] result in
+            DispatchQueue.main.async {
+                if case .success(let response) = result {
+                    self?.ingresosPorCategoria = response.ingresosPorCategoria ?? []
+                    self?.ingresosPorMes = response.ingresosPorMes ?? []
+                    self?.updateIngresosBreakdown()
+                }
+            }
+        }
+
+        APIManager.shared.getResenasProfesional(profesionalId: profesionalId) { [weak self] result in
+            DispatchQueue.main.async {
+                if case .success(let response) = result, let stats = response.estadisticas {
+                    if stats.totalResenas == 0 {
+                        self?.calificacionRatingLabel?.text = "Sin reseñas"
+                    } else {
+                        let stars = String(repeating: "⭐", count: Int(stats.calificacionPromedio.rounded()))
+                        self?.calificacionRatingLabel?.text = String(format: "%.1f %@", stats.calificacionPromedio, stars)
+                    }
+                }
+            }
         }
     }
 
@@ -64,62 +100,52 @@ class HistorialViewController: UIViewController {
                 switch result {
                 case .success(let response):
                     self?.trabajos = response.historial
-                    self?.trabajosTableView.reloadData()
                 case .failure:
                     self?.trabajos = []
-                    self?.trabajosTableView.reloadData()
                 }
+                self?.applyFilter()
             }
         }
     }
 
-    private func loadProfesionalHistorial(userId: Int) {
-        APIManager.shared.getTrabajosProfesional(usuarioId: userId) { [weak self] result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let response):
-                    self?.trabajos = response.trabajos
-                    self?.trabajosTableView.reloadData()
-                case .failure:
-                    self?.trabajos = []
-                    self?.trabajosTableView.reloadData()
-                }
+    private func applyFilter() {
+        displayedTrabajos = trabajos.filter { $0.estado == "aceptada" || $0.estado == "completada" }
+        trabajosTableView.reloadData()
+    }
+
+    private func computeIngresosFromTrabajos() {
+        let completadas = trabajos.filter { $0.estado == "completada" }
+        let total = completadas.reduce(0.0) { $0 + ($1.servicio?.precioReferencia ?? 0) }
+        ingresosCardValueLabel?.text = String(format: "$%.0f", total)
+        trabajosCardValueLabel?.text = "\(completadas.count)"
+    }
+
+    private func updateIngresosBreakdown() {
+        resumenStack?.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        if ingresosPorMes.isEmpty {
+            let empty = makeEmptyLabel("Sin datos disponibles")
+            resumenStack?.addArrangedSubview(empty)
+        } else {
+            for mes in ingresosPorMes {
+                let row = createResumenRow(mes: mes.mes, monto: String(format: "$%.0f", mes.total))
+                resumenStack?.addArrangedSubview(row)
             }
         }
 
-        APIManager.shared.getIngresosProfesional(usuarioId: userId) { [weak self] result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let response):
-                    self?.estadisticas = response.estadisticas
-                    self?.ingresosPorCategoria = response.ingresosPorCategoria
-                    self?.ingresosPorMes = response.ingresosPorMes
-                    self?.updateIngresosTab()
-                case .failure:
-                    break
-                }
-            }
-        }
-
-        APIManager.shared.getResenasProfesional(profesionalId: userId) { [weak self] result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let response):
-                    let stats = response.estadisticas
-                    if stats.totalResenas == 0 {
-                        self?.calificacionRatingLabel?.text = "Sin reseñas"
-                    } else {
-                        let stars = String(repeating: "⭐", count: Int(stats.calificacionPromedio.rounded()))
-                        self?.calificacionRatingLabel?.text = String(format: "%.1f %@", stats.calificacionPromedio, stars)
-                    }
-                case .failure:
-                    break
-                }
+        categoriasStack?.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        if ingresosPorCategoria.isEmpty {
+            let empty = makeEmptyLabel("Sin datos disponibles")
+            categoriasStack?.addArrangedSubview(empty)
+        } else {
+            for cat in ingresosPorCategoria {
+                let row = createCategoriaRow(categoria: cat.categoria, monto: String(format: "$%.0f", cat.total), trabajos: cat.cantidad)
+                categoriasStack?.addArrangedSubview(row)
             }
         }
     }
 
     // MARK: - Setup
+
     private func setupUI() {
         view.backgroundColor = UIColor(white: 0.97, alpha: 1)
         title = "Historial"
@@ -148,11 +174,11 @@ class HistorialViewController: UIViewController {
             ingresosScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             ingresosScrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            ingresosContentView.topAnchor.constraint(equalTo: ingresosScrollView.topAnchor),
-            ingresosContentView.leadingAnchor.constraint(equalTo: ingresosScrollView.leadingAnchor),
-            ingresosContentView.trailingAnchor.constraint(equalTo: ingresosScrollView.trailingAnchor),
-            ingresosContentView.bottomAnchor.constraint(equalTo: ingresosScrollView.bottomAnchor),
-            ingresosContentView.widthAnchor.constraint(equalTo: ingresosScrollView.widthAnchor),
+            ingresosContentView.topAnchor.constraint(equalTo: ingresosScrollView.contentLayoutGuide.topAnchor),
+            ingresosContentView.leadingAnchor.constraint(equalTo: ingresosScrollView.contentLayoutGuide.leadingAnchor),
+            ingresosContentView.trailingAnchor.constraint(equalTo: ingresosScrollView.contentLayoutGuide.trailingAnchor),
+            ingresosContentView.bottomAnchor.constraint(equalTo: ingresosScrollView.contentLayoutGuide.bottomAnchor),
+            ingresosContentView.widthAnchor.constraint(equalTo: ingresosScrollView.frameLayoutGuide.widthAnchor),
         ])
 
         tabControl.addTarget(self, action: #selector(tabChanged), for: .valueChanged)
@@ -161,25 +187,6 @@ class HistorialViewController: UIViewController {
         setupIngresosTab()
 
         ingresosScrollView.isHidden = true
-    }
-
-    private func updateIngresosTab() {
-        if let stats = estadisticas {
-            ingresosCardValueLabel?.text = String(format: "$%.0f", stats.ingresoTotal)
-            trabajosCardValueLabel?.text = "\(stats.totalTrabajosCompletados)"
-        }
-
-        resumenStack?.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        for mes in ingresosPorMes {
-            let row = createResumenRow(mes: mes.mes, trabajos: "", monto: String(format: "$%.0f", mes.total))
-            resumenStack?.addArrangedSubview(row)
-        }
-
-        categoriasStack?.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        for categoria in ingresosPorCategoria {
-            let row = createCategoriaRow(categoria: categoria.categoria, monto: String(format: "$%.0f", categoria.total), trabajos: categoria.cantidad)
-            categoriasStack?.addArrangedSubview(row)
-        }
     }
 
     @objc private func tabChanged() {
@@ -194,26 +201,19 @@ class HistorialViewController: UIViewController {
     }
 
     private func setupIngresosTab() {
-        // Card 1: Ingresos Totales
-        let (ingresosCard, ingresosLabel) = createStatsCardWithLabel(title: "Ingresos Totales", value: "$0", backgroundColor: .systemBlue, textColor: .white)
+        let (ingresosCard, ingresosLabel) = makeStatsCard(title: "Ingresos Totales", value: "$0", bg: .systemBlue)
         ingresosCardValueLabel = ingresosLabel
         ingresosContentView.addSubview(ingresosCard)
 
-        // Card 2: Trabajos
-        let (trabajosCard, trabajosLabel) = createStatsCardWithLabel(title: "Trabajos", value: "0", backgroundColor: .systemGreen, textColor: .white)
+        let (trabajosCard, trabajosLabel) = makeStatsCard(title: "Trabajos Completados", value: "0", bg: .systemGreen)
         trabajosCardValueLabel = trabajosLabel
         ingresosContentView.addSubview(trabajosCard)
 
-        // Card 3: Calificación
-        let (calificacionCard, calificacionLabel) = createRatingCardWithLabel()
+        let (calificacionCard, calificacionLabel) = makeRatingCard()
         calificacionRatingLabel = calificacionLabel
         ingresosContentView.addSubview(calificacionCard)
 
-        // Resumen Mensual
-        let resumenTitle = UILabel()
-        resumenTitle.text = "Resumen Mensual"
-        resumenTitle.font = UIFont.boldSystemFont(ofSize: 16)
-        resumenTitle.translatesAutoresizingMaskIntoConstraints = false
+        let resumenTitle = makeSectionTitle("Resumen Mensual")
         ingresosContentView.addSubview(resumenTitle)
 
         let rs = UIStackView()
@@ -221,20 +221,10 @@ class HistorialViewController: UIViewController {
         rs.spacing = 12
         rs.translatesAutoresizingMaskIntoConstraints = false
         resumenStack = rs
+        rs.addArrangedSubview(makeEmptyLabel("Sin datos disponibles"))
         ingresosContentView.addSubview(rs)
 
-        let emptyMesesLabel = UILabel()
-        emptyMesesLabel.text = "Sin datos disponibles"
-        emptyMesesLabel.font = UIFont.systemFont(ofSize: 14)
-        emptyMesesLabel.textColor = .secondaryLabel
-        emptyMesesLabel.textAlignment = .center
-        rs.addArrangedSubview(emptyMesesLabel)
-
-        // Ingresos por Categoría
-        let categoriasTitle = UILabel()
-        categoriasTitle.text = "Ingresos por Categoría"
-        categoriasTitle.font = UIFont.boldSystemFont(ofSize: 16)
-        categoriasTitle.translatesAutoresizingMaskIntoConstraints = false
+        let categoriasTitle = makeSectionTitle("Ingresos por Categoría")
         ingresosContentView.addSubview(categoriasTitle)
 
         let cs = UIStackView()
@@ -242,14 +232,8 @@ class HistorialViewController: UIViewController {
         cs.spacing = 16
         cs.translatesAutoresizingMaskIntoConstraints = false
         categoriasStack = cs
+        cs.addArrangedSubview(makeEmptyLabel("Sin datos disponibles"))
         ingresosContentView.addSubview(cs)
-
-        let emptyCategoriasLabel = UILabel()
-        emptyCategoriasLabel.text = "Sin datos disponibles"
-        emptyCategoriasLabel.font = UIFont.systemFont(ofSize: 14)
-        emptyCategoriasLabel.textColor = .secondaryLabel
-        emptyCategoriasLabel.textAlignment = .center
-        cs.addArrangedSubview(emptyCategoriasLabel)
 
         NSLayoutConstraint.activate([
             ingresosCard.topAnchor.constraint(equalTo: ingresosContentView.topAnchor, constant: 16),
@@ -284,60 +268,33 @@ class HistorialViewController: UIViewController {
         ])
     }
 
-    private func createStatsCard(title: String, value: String, backgroundColor: UIColor, textColor: UIColor) -> UIView {
+    // MARK: - View helpers
+
+    private func makeStatsCard(title: String, value: String, bg: UIColor) -> (UIView, UILabel) {
         let card = UIView()
-        card.backgroundColor = backgroundColor
+        card.backgroundColor = bg
         card.layer.cornerRadius = 12
         card.translatesAutoresizingMaskIntoConstraints = false
 
         let titleLabel = UILabel()
         titleLabel.text = title
-        titleLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
-        titleLabel.textColor = textColor
+        titleLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+        titleLabel.textColor = .white.withAlphaComponent(0.9)
+        titleLabel.numberOfLines = 2
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(titleLabel)
 
         let valueLabel = UILabel()
         valueLabel.text = value
-        valueLabel.font = UIFont.boldSystemFont(ofSize: 28)
-        valueLabel.textColor = textColor
+        valueLabel.font = UIFont.boldSystemFont(ofSize: 26)
+        valueLabel.textColor = .white
         valueLabel.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(valueLabel)
 
         NSLayoutConstraint.activate([
             titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
             titleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
-
-            valueLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
-            valueLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
-        ])
-
-        return card
-    }
-
-    private func createStatsCardWithLabel(title: String, value: String, backgroundColor: UIColor, textColor: UIColor) -> (UIView, UILabel) {
-        let card = UIView()
-        card.backgroundColor = backgroundColor
-        card.layer.cornerRadius = 12
-        card.translatesAutoresizingMaskIntoConstraints = false
-
-        let titleLabel = UILabel()
-        titleLabel.text = title
-        titleLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
-        titleLabel.textColor = textColor
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(titleLabel)
-
-        let valueLabel = UILabel()
-        valueLabel.text = value
-        valueLabel.font = UIFont.boldSystemFont(ofSize: 28)
-        valueLabel.textColor = textColor
-        valueLabel.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(valueLabel)
-
-        NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
-            titleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            titleLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -8),
 
             valueLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
             valueLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
@@ -346,7 +303,7 @@ class HistorialViewController: UIViewController {
         return (card, valueLabel)
     }
 
-    private func createRatingCard() -> UIView {
+    private func makeRatingCard() -> (UIView, UILabel) {
         let card = UIView()
         card.backgroundColor = .systemYellow
         card.layer.cornerRadius = 12
@@ -360,39 +317,7 @@ class HistorialViewController: UIViewController {
         card.addSubview(titleLabel)
 
         let ratingLabel = UILabel()
-        ratingLabel.text = "4.8 ⭐⭐⭐⭐⭐"
-        ratingLabel.font = UIFont.boldSystemFont(ofSize: 18)
-        ratingLabel.textColor = .white
-        ratingLabel.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(ratingLabel)
-
-        NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
-            titleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
-
-            ratingLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
-            ratingLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
-            ratingLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
-        ])
-
-        return card
-    }
-
-    private func createRatingCardWithLabel() -> (UIView, UILabel) {
-        let card = UIView()
-        card.backgroundColor = .systemYellow
-        card.layer.cornerRadius = 12
-        card.translatesAutoresizingMaskIntoConstraints = false
-
-        let titleLabel = UILabel()
-        titleLabel.text = "Calificación Promedio"
-        titleLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
-        titleLabel.textColor = .white
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(titleLabel)
-
-        let ratingLabel = UILabel()
-        ratingLabel.text = "0.0 ☆☆☆☆☆"
+        ratingLabel.text = "Sin reseñas"
         ratingLabel.font = UIFont.boldSystemFont(ofSize: 18)
         ratingLabel.textColor = .white
         ratingLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -410,7 +335,24 @@ class HistorialViewController: UIViewController {
         return (card, ratingLabel)
     }
 
-    private func createResumenRow(mes: String, trabajos: String, monto: String) -> UIView {
+    private func makeSectionTitle(_ text: String) -> UILabel {
+        let l = UILabel()
+        l.text = text
+        l.font = UIFont.boldSystemFont(ofSize: 16)
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }
+
+    private func makeEmptyLabel(_ text: String) -> UILabel {
+        let l = UILabel()
+        l.text = text
+        l.font = UIFont.systemFont(ofSize: 14)
+        l.textColor = .secondaryLabel
+        l.textAlignment = .center
+        return l
+    }
+
+    private func createResumenRow(mes: String, monto: String) -> UIView {
         let row = UIView()
         row.translatesAutoresizingMaskIntoConstraints = false
 
@@ -419,13 +361,6 @@ class HistorialViewController: UIViewController {
         mesLabel.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
         mesLabel.translatesAutoresizingMaskIntoConstraints = false
         row.addSubview(mesLabel)
-
-        let trabajosLabel = UILabel()
-        trabajosLabel.text = trabajos
-        trabajosLabel.font = UIFont.systemFont(ofSize: 12)
-        trabajosLabel.textColor = .systemGray
-        trabajosLabel.translatesAutoresizingMaskIntoConstraints = false
-        row.addSubview(trabajosLabel)
 
         let montoLabel = UILabel()
         montoLabel.text = monto
@@ -437,16 +372,13 @@ class HistorialViewController: UIViewController {
         NSLayoutConstraint.activate([
             mesLabel.topAnchor.constraint(equalTo: row.topAnchor),
             mesLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor),
-
-            trabajosLabel.topAnchor.constraint(equalTo: mesLabel.bottomAnchor, constant: 2),
-            trabajosLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor),
-            trabajosLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor),
+            mesLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor),
 
             montoLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
             montoLabel.trailingAnchor.constraint(equalTo: row.trailingAnchor),
         ])
 
-        row.heightAnchor.constraint(equalToConstant: 45).isActive = true
+        row.heightAnchor.constraint(equalToConstant: 36).isActive = true
         return row
     }
 
@@ -454,11 +386,11 @@ class HistorialViewController: UIViewController {
         let row = UIView()
         row.translatesAutoresizingMaskIntoConstraints = false
 
-        let categoriaLabel = UILabel()
-        categoriaLabel.text = categoria
-        categoriaLabel.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
-        categoriaLabel.translatesAutoresizingMaskIntoConstraints = false
-        row.addSubview(categoriaLabel)
+        let catLabel = UILabel()
+        catLabel.text = categoria.capitalized
+        catLabel.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        catLabel.translatesAutoresizingMaskIntoConstraints = false
+        row.addSubview(catLabel)
 
         let montoLabel = UILabel()
         montoLabel.text = monto
@@ -468,27 +400,27 @@ class HistorialViewController: UIViewController {
         row.addSubview(montoLabel)
 
         let progressView = UIProgressView(progressViewStyle: .default)
-        progressView.progress = 0.25
+        progressView.progress = 0.5
         progressView.progressTintColor = .systemBlue
         progressView.trackTintColor = UIColor.systemBlue.withAlphaComponent(0.2)
         progressView.translatesAutoresizingMaskIntoConstraints = false
         row.addSubview(progressView)
 
         let trabajosLabel = UILabel()
-        trabajosLabel.text = "\(trabajos) trabajo"
+        trabajosLabel.text = "\(trabajos) trabajo\(trabajos == 1 ? "" : "s")"
         trabajosLabel.font = UIFont.systemFont(ofSize: 11)
         trabajosLabel.textColor = .systemGray
         trabajosLabel.translatesAutoresizingMaskIntoConstraints = false
         row.addSubview(trabajosLabel)
 
         NSLayoutConstraint.activate([
-            categoriaLabel.topAnchor.constraint(equalTo: row.topAnchor),
-            categoriaLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            catLabel.topAnchor.constraint(equalTo: row.topAnchor),
+            catLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor),
 
             montoLabel.topAnchor.constraint(equalTo: row.topAnchor),
             montoLabel.trailingAnchor.constraint(equalTo: row.trailingAnchor),
 
-            progressView.topAnchor.constraint(equalTo: categoriaLabel.bottomAnchor, constant: 6),
+            progressView.topAnchor.constraint(equalTo: catLabel.bottomAnchor, constant: 6),
             progressView.leadingAnchor.constraint(equalTo: row.leadingAnchor),
             progressView.trailingAnchor.constraint(equalTo: row.trailingAnchor),
             progressView.heightAnchor.constraint(equalToConstant: 4),
@@ -503,46 +435,54 @@ class HistorialViewController: UIViewController {
     }
 }
 
+// MARK: - UITableViewDataSource & Delegate
+
 extension HistorialViewController: UITableViewDataSource, UITableViewDelegate {
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        trabajos.count
+        displayedTrabajos.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: HistorialCell.identifier, for: indexPath) as! HistorialCell
+        let trabajo = displayedTrabajos[indexPath.row]
+        let isPro = AuthManager.shared.isProfessional
 
-        let trabajo = trabajos[indexPath.row]
-        let profesionalNombre = trabajo.profesional?.usuario?.nombre ?? ""
-        let precioStr = String(format: "$%.0f", trabajo.servicio?.precioReferencia ?? 0)
-        let fechaStr = trabajo.fechaSolicitud ?? ""
-        let titulo = trabajo.servicio?.nombreServicio ?? ""
-        let comentario = "Toca para calificar"
+        let titulo = trabajo.servicio?.nombreServicio ?? trabajo.descripcion
+        let precio = String(format: "$%.0f", trabajo.servicio?.precioReferencia ?? 0)
+        let fecha = trabajo.fechaSolicitud ?? ""
+        let contacto = isPro
+            ? "Cliente: \(trabajo.cliente?.nombre ?? "—")"
+            : (trabajo.profesional?.usuario?.nombre ?? "—")
+        let comentario: String? = isPro ? nil : "Toca para calificar"
 
-        cell.configure(titulo: titulo, profesional: profesionalNombre, precio: precioStr, fecha: fechaStr, rating: "", comentario: comentario)
+        cell.configure(titulo: titulo, contacto: contacto, precio: precio, fecha: fecha, estado: trabajo.estado, comentario: comentario)
         return cell
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        160
+        UITableView.automaticDimension
+    }
+
+    func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
+        130
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         guard !AuthManager.shared.isProfessional else { return }
 
-        let solicitud = trabajos[indexPath.row]
-
+        let solicitud = displayedTrabajos[indexPath.row]
         APIManager.shared.getResenaBySolicitud(solicitudId: solicitud.id) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self = self else { return }
-                switch result {
-                case .success(let response):
-                    let vc = CalificarViewController(solicitud: solicitud, resena: response.resena)
-                    self.navigationController?.pushViewController(vc, animated: true)
-                case .failure:
-                    let vc = CalificarViewController(solicitud: solicitud)
-                    self.navigationController?.pushViewController(vc, animated: true)
+                let vc: CalificarViewController
+                if case .success(let response) = result {
+                    vc = CalificarViewController(solicitud: solicitud, resena: response.resena)
+                } else {
+                    vc = CalificarViewController(solicitud: solicitud)
                 }
+                self.navigationController?.pushViewController(vc, animated: true)
             }
         }
     }

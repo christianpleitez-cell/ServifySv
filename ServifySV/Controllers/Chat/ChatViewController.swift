@@ -141,7 +141,7 @@ class ChatViewController: UIViewController {
     // MARK: - Actions
     @objc private func sendTapped() {
         guard let text = messageTextField.text, !text.isEmpty else { return }
-        guard let remitenteId = AuthManager.shared.currentUser?.id else { return }
+        guard let remitenteId = AuthManager.shared.currentUser?.id_profesional else { return }
 
         sendButton.isEnabled = false
 
