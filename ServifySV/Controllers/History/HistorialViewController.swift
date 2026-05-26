@@ -2,45 +2,34 @@ import UIKit
 
 class HistorialViewController: UIViewController {
 
-    // MARK: - Properties
-    private var historial: [Solicitud] = MockData.solicitudes.filter { $0.estado == .completada || $0.estado == .cancelada }
+    private var trabajos: [Solicitud] = []
+    private var displayedTrabajos: [Solicitud] = []
+    private var ingresosPorCategoria: [IngresoPorCategoria] = []
+    private var ingresosPorMes: [IngresoPorMes] = []
 
-    // MARK: - UI Components
-    private let tableView: UITableView = {
+    private var ingresosCardValueLabel: UILabel?
+    private var trabajosCardValueLabel: UILabel?
+    private var calificacionRatingLabel: UILabel?
+    private var resumenStack: UIStackView?
+    private var categoriasStack: UIStackView?
+
+    private let tabControl: UISegmentedControl = {
+        let sc = UISegmentedControl(items: ["Trabajos", "Ingresos"])
+        sc.selectedSegmentIndex = 0
+        sc.translatesAutoresizingMaskIntoConstraints = false
+        return sc
+    }()
+
+    private let trabajosTableView: UITableView = {
         let tv = UITableView()
         tv.separatorStyle = .none
-        tv.backgroundColor = .systemGroupedBackground
+        tv.backgroundColor = UIColor(white: 0.97, alpha: 1)
         tv.translatesAutoresizingMaskIntoConstraints = false
         return tv
     }()
 
-    private let emptyStateView: UIView = {
-        let v = UIView()
-        v.isHidden = true
-        v.translatesAutoresizingMaskIntoConstraints = false
-        return v
-    }()
-
-    private let emptyLabel: UILabel = {
-        let l = UILabel()
-        l.text = "Sin historial aún"
-        l.font = UIFont.systemFont(ofSize: 18, weight: .medium)
-        l.textColor = .secondaryLabel
-        l.textAlignment = .center
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
-
-    private let emptySubLabel: UILabel = {
-        let l = UILabel()
-        l.text = "Tus servicios completados aparecerán aquí"
-        l.font = UIFont.systemFont(ofSize: 14)
-        l.textColor = .tertiaryLabel
-        l.textAlignment = .center
-        l.numberOfLines = 2
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
+    private let ingresosScrollView = UIScrollView()
+    private let ingresosContentView = UIView()
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -48,65 +37,453 @@ class HistorialViewController: UIViewController {
         setupUI()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadHistorial()
+    }
+
+    // MARK: - Data loading
+
+    private func loadHistorial() {
+        if AuthManager.shared.isProfessional {
+            guard let profesionalId = AuthManager.shared.currentUser?.id_profesional else { return }
+            loadProfesionalHistorial(profesionalId: profesionalId)
+        } else {
+            guard let clienteId = AuthManager.shared.currentUser?.userId else { return }
+            loadClienteHistorial(userId: clienteId)
+        }
+    }
+
+    private func loadProfesionalHistorial(profesionalId: Int) {
+        // Use the working solicitudes endpoint and filter locally
+        APIManager.shared.getSolicitudesProfesional(profesionalId: profesionalId) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    self?.trabajos = response.solicitudes
+                case .failure:
+                    self?.trabajos = []
+                }
+                self?.applyFilter()
+                self?.computeIngresosFromTrabajos()
+            }
+        }
+
+        // Best-effort: monthly/category breakdown from ingresos endpoint
+        APIManager.shared.getIngresosProfesional(usuarioId: profesionalId) { [weak self] result in
+            DispatchQueue.main.async {
+                if case .success(let response) = result {
+                    self?.ingresosPorCategoria = response.ingresosPorCategoria ?? []
+                    self?.ingresosPorMes = response.ingresosPorMes ?? []
+                    self?.updateIngresosBreakdown()
+                }
+            }
+        }
+
+        APIManager.shared.getResenasProfesional(profesionalId: profesionalId) { [weak self] result in
+            DispatchQueue.main.async {
+                if case .success(let response) = result, let stats = response.estadisticas {
+                    if stats.totalResenas == 0 {
+                        self?.calificacionRatingLabel?.text = "Sin reseñas"
+                    } else {
+                        let stars = String(repeating: "⭐", count: Int(stats.calificacionPromedio.rounded()))
+                        self?.calificacionRatingLabel?.text = String(format: "%.1f %@", stats.calificacionPromedio, stars)
+                    }
+                }
+            }
+        }
+    }
+
+    private func loadClienteHistorial(userId: Int) {
+        APIManager.shared.getHistorialCliente(usuarioId: userId) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    self?.trabajos = response.historial
+                case .failure:
+                    self?.trabajos = []
+                }
+                self?.applyFilter()
+            }
+        }
+    }
+
+    private func applyFilter() {
+        displayedTrabajos = trabajos.filter { $0.estado == "aceptada" || $0.estado == "completada" }
+        trabajosTableView.reloadData()
+    }
+
+    private func computeIngresosFromTrabajos() {
+        let completadas = trabajos.filter { $0.estado == "completada" }
+        let total = completadas.reduce(0.0) { $0 + ($1.servicio?.precioReferencia ?? 0) }
+        ingresosCardValueLabel?.text = String(format: "$%.0f", total)
+        trabajosCardValueLabel?.text = "\(completadas.count)"
+    }
+
+    private func updateIngresosBreakdown() {
+        resumenStack?.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        if ingresosPorMes.isEmpty {
+            let empty = makeEmptyLabel("Sin datos disponibles")
+            resumenStack?.addArrangedSubview(empty)
+        } else {
+            for mes in ingresosPorMes {
+                let row = createResumenRow(mes: mes.mes, monto: String(format: "$%.0f", mes.total))
+                resumenStack?.addArrangedSubview(row)
+            }
+        }
+
+        categoriasStack?.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        if ingresosPorCategoria.isEmpty {
+            let empty = makeEmptyLabel("Sin datos disponibles")
+            categoriasStack?.addArrangedSubview(empty)
+        } else {
+            for cat in ingresosPorCategoria {
+                let row = createCategoriaRow(categoria: cat.categoria, monto: String(format: "$%.0f", cat.total), trabajos: cat.cantidad)
+                categoriasStack?.addArrangedSubview(row)
+            }
+        }
+    }
+
     // MARK: - Setup
+
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = UIColor(white: 0.97, alpha: 1)
         title = "Historial"
         navigationController?.navigationBar.prefersLargeTitles = true
 
-        emptyStateView.addSubview(emptyLabel)
-        emptyStateView.addSubview(emptySubLabel)
-        view.addSubview(tableView)
-        view.addSubview(emptyStateView)
+        view.addSubview(tabControl)
+        view.addSubview(trabajosTableView)
+
+        ingresosScrollView.translatesAutoresizingMaskIntoConstraints = false
+        ingresosContentView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(ingresosScrollView)
+        ingresosScrollView.addSubview(ingresosContentView)
 
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            tabControl.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            tabControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            tabControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
 
-            emptyStateView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            emptyStateView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            emptyStateView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
-            emptyStateView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
+            trabajosTableView.topAnchor.constraint(equalTo: tabControl.bottomAnchor, constant: 12),
+            trabajosTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            trabajosTableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            trabajosTableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            emptyLabel.topAnchor.constraint(equalTo: emptyStateView.topAnchor),
-            emptyLabel.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
+            ingresosScrollView.topAnchor.constraint(equalTo: tabControl.bottomAnchor, constant: 12),
+            ingresosScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            ingresosScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            ingresosScrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            emptySubLabel.topAnchor.constraint(equalTo: emptyLabel.bottomAnchor, constant: 8),
-            emptySubLabel.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
-            emptySubLabel.bottomAnchor.constraint(equalTo: emptyStateView.bottomAnchor),
+            ingresosContentView.topAnchor.constraint(equalTo: ingresosScrollView.contentLayoutGuide.topAnchor),
+            ingresosContentView.leadingAnchor.constraint(equalTo: ingresosScrollView.contentLayoutGuide.leadingAnchor),
+            ingresosContentView.trailingAnchor.constraint(equalTo: ingresosScrollView.contentLayoutGuide.trailingAnchor),
+            ingresosContentView.bottomAnchor.constraint(equalTo: ingresosScrollView.contentLayoutGuide.bottomAnchor),
+            ingresosContentView.widthAnchor.constraint(equalTo: ingresosScrollView.frameLayoutGuide.widthAnchor),
         ])
 
-        tableView.delegate = self
-        tableView.dataSource = self
-        tableView.register(HistorialCell.self, forCellReuseIdentifier: HistorialCell.identifier)
+        tabControl.addTarget(self, action: #selector(tabChanged), for: .valueChanged)
 
-        emptyStateView.isHidden = !historial.isEmpty
-        tableView.isHidden = historial.isEmpty
+        setupTrabajosTab()
+        setupIngresosTab()
+
+        ingresosScrollView.isHidden = true
+    }
+
+    @objc private func tabChanged() {
+        trabajosTableView.isHidden = tabControl.selectedSegmentIndex == 1
+        ingresosScrollView.isHidden = tabControl.selectedSegmentIndex == 0
+    }
+
+    private func setupTrabajosTab() {
+        trabajosTableView.delegate = self
+        trabajosTableView.dataSource = self
+        trabajosTableView.register(HistorialCell.self, forCellReuseIdentifier: HistorialCell.identifier)
+    }
+
+    private func setupIngresosTab() {
+        let (ingresosCard, ingresosLabel) = makeStatsCard(title: "Ingresos Totales", value: "$0", bg: .systemBlue)
+        ingresosCardValueLabel = ingresosLabel
+        ingresosContentView.addSubview(ingresosCard)
+
+        let (trabajosCard, trabajosLabel) = makeStatsCard(title: "Trabajos Completados", value: "0", bg: .systemGreen)
+        trabajosCardValueLabel = trabajosLabel
+        ingresosContentView.addSubview(trabajosCard)
+
+        let (calificacionCard, calificacionLabel) = makeRatingCard()
+        calificacionRatingLabel = calificacionLabel
+        ingresosContentView.addSubview(calificacionCard)
+
+        let resumenTitle = makeSectionTitle("Resumen Mensual")
+        ingresosContentView.addSubview(resumenTitle)
+
+        let rs = UIStackView()
+        rs.axis = .vertical
+        rs.spacing = 12
+        rs.translatesAutoresizingMaskIntoConstraints = false
+        resumenStack = rs
+        rs.addArrangedSubview(makeEmptyLabel("Sin datos disponibles"))
+        ingresosContentView.addSubview(rs)
+
+        let categoriasTitle = makeSectionTitle("Ingresos por Categoría")
+        ingresosContentView.addSubview(categoriasTitle)
+
+        let cs = UIStackView()
+        cs.axis = .vertical
+        cs.spacing = 16
+        cs.translatesAutoresizingMaskIntoConstraints = false
+        categoriasStack = cs
+        cs.addArrangedSubview(makeEmptyLabel("Sin datos disponibles"))
+        ingresosContentView.addSubview(cs)
+
+        NSLayoutConstraint.activate([
+            ingresosCard.topAnchor.constraint(equalTo: ingresosContentView.topAnchor, constant: 16),
+            ingresosCard.leadingAnchor.constraint(equalTo: ingresosContentView.leadingAnchor, constant: 16),
+            ingresosCard.trailingAnchor.constraint(equalTo: ingresosContentView.centerXAnchor, constant: -6),
+            ingresosCard.heightAnchor.constraint(equalToConstant: 100),
+
+            trabajosCard.topAnchor.constraint(equalTo: ingresosContentView.topAnchor, constant: 16),
+            trabajosCard.leadingAnchor.constraint(equalTo: ingresosContentView.centerXAnchor, constant: 6),
+            trabajosCard.trailingAnchor.constraint(equalTo: ingresosContentView.trailingAnchor, constant: -16),
+            trabajosCard.heightAnchor.constraint(equalToConstant: 100),
+
+            calificacionCard.topAnchor.constraint(equalTo: ingresosCard.bottomAnchor, constant: 12),
+            calificacionCard.leadingAnchor.constraint(equalTo: ingresosContentView.leadingAnchor, constant: 16),
+            calificacionCard.trailingAnchor.constraint(equalTo: ingresosContentView.trailingAnchor, constant: -16),
+            calificacionCard.heightAnchor.constraint(equalToConstant: 80),
+
+            resumenTitle.topAnchor.constraint(equalTo: calificacionCard.bottomAnchor, constant: 20),
+            resumenTitle.leadingAnchor.constraint(equalTo: ingresosContentView.leadingAnchor, constant: 16),
+
+            rs.topAnchor.constraint(equalTo: resumenTitle.bottomAnchor, constant: 12),
+            rs.leadingAnchor.constraint(equalTo: ingresosContentView.leadingAnchor, constant: 16),
+            rs.trailingAnchor.constraint(equalTo: ingresosContentView.trailingAnchor, constant: -16),
+
+            categoriasTitle.topAnchor.constraint(equalTo: rs.bottomAnchor, constant: 24),
+            categoriasTitle.leadingAnchor.constraint(equalTo: ingresosContentView.leadingAnchor, constant: 16),
+
+            cs.topAnchor.constraint(equalTo: categoriasTitle.bottomAnchor, constant: 12),
+            cs.leadingAnchor.constraint(equalTo: ingresosContentView.leadingAnchor, constant: 16),
+            cs.trailingAnchor.constraint(equalTo: ingresosContentView.trailingAnchor, constant: -16),
+            cs.bottomAnchor.constraint(equalTo: ingresosContentView.bottomAnchor, constant: -20),
+        ])
+    }
+
+    // MARK: - View helpers
+
+    private func makeStatsCard(title: String, value: String, bg: UIColor) -> (UIView, UILabel) {
+        let card = UIView()
+        card.backgroundColor = bg
+        card.layer.cornerRadius = 12
+        card.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = UILabel()
+        titleLabel.text = title
+        titleLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+        titleLabel.textColor = .white.withAlphaComponent(0.9)
+        titleLabel.numberOfLines = 2
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(titleLabel)
+
+        let valueLabel = UILabel()
+        valueLabel.text = value
+        valueLabel.font = UIFont.boldSystemFont(ofSize: 26)
+        valueLabel.textColor = .white
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(valueLabel)
+
+        NSLayoutConstraint.activate([
+            titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            titleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            titleLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -8),
+
+            valueLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+            valueLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+        ])
+
+        return (card, valueLabel)
+    }
+
+    private func makeRatingCard() -> (UIView, UILabel) {
+        let card = UIView()
+        card.backgroundColor = .systemYellow
+        card.layer.cornerRadius = 12
+        card.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = UILabel()
+        titleLabel.text = "Calificación Promedio"
+        titleLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        titleLabel.textColor = .white
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(titleLabel)
+
+        let ratingLabel = UILabel()
+        ratingLabel.text = "Sin reseñas"
+        ratingLabel.font = UIFont.boldSystemFont(ofSize: 18)
+        ratingLabel.textColor = .white
+        ratingLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(ratingLabel)
+
+        NSLayoutConstraint.activate([
+            titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            titleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+
+            ratingLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
+            ratingLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            ratingLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+        ])
+
+        return (card, ratingLabel)
+    }
+
+    private func makeSectionTitle(_ text: String) -> UILabel {
+        let l = UILabel()
+        l.text = text
+        l.font = UIFont.boldSystemFont(ofSize: 16)
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }
+
+    private func makeEmptyLabel(_ text: String) -> UILabel {
+        let l = UILabel()
+        l.text = text
+        l.font = UIFont.systemFont(ofSize: 14)
+        l.textColor = .secondaryLabel
+        l.textAlignment = .center
+        return l
+    }
+
+    private func createResumenRow(mes: String, monto: String) -> UIView {
+        let row = UIView()
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let mesLabel = UILabel()
+        mesLabel.text = mes
+        mesLabel.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+        mesLabel.translatesAutoresizingMaskIntoConstraints = false
+        row.addSubview(mesLabel)
+
+        let montoLabel = UILabel()
+        montoLabel.text = monto
+        montoLabel.font = UIFont.boldSystemFont(ofSize: 14)
+        montoLabel.textColor = .systemGreen
+        montoLabel.translatesAutoresizingMaskIntoConstraints = false
+        row.addSubview(montoLabel)
+
+        NSLayoutConstraint.activate([
+            mesLabel.topAnchor.constraint(equalTo: row.topAnchor),
+            mesLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            mesLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor),
+
+            montoLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            montoLabel.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+        ])
+
+        row.heightAnchor.constraint(equalToConstant: 36).isActive = true
+        return row
+    }
+
+    private func createCategoriaRow(categoria: String, monto: String, trabajos: Int) -> UIView {
+        let row = UIView()
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let catLabel = UILabel()
+        catLabel.text = categoria.capitalized
+        catLabel.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        catLabel.translatesAutoresizingMaskIntoConstraints = false
+        row.addSubview(catLabel)
+
+        let montoLabel = UILabel()
+        montoLabel.text = monto
+        montoLabel.font = UIFont.boldSystemFont(ofSize: 13)
+        montoLabel.textColor = .systemBlue
+        montoLabel.translatesAutoresizingMaskIntoConstraints = false
+        row.addSubview(montoLabel)
+
+        let progressView = UIProgressView(progressViewStyle: .default)
+        progressView.progress = 0.5
+        progressView.progressTintColor = .systemBlue
+        progressView.trackTintColor = UIColor.systemBlue.withAlphaComponent(0.2)
+        progressView.translatesAutoresizingMaskIntoConstraints = false
+        row.addSubview(progressView)
+
+        let trabajosLabel = UILabel()
+        trabajosLabel.text = "\(trabajos) trabajo\(trabajos == 1 ? "" : "s")"
+        trabajosLabel.font = UIFont.systemFont(ofSize: 11)
+        trabajosLabel.textColor = .systemGray
+        trabajosLabel.translatesAutoresizingMaskIntoConstraints = false
+        row.addSubview(trabajosLabel)
+
+        NSLayoutConstraint.activate([
+            catLabel.topAnchor.constraint(equalTo: row.topAnchor),
+            catLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+
+            montoLabel.topAnchor.constraint(equalTo: row.topAnchor),
+            montoLabel.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+
+            progressView.topAnchor.constraint(equalTo: catLabel.bottomAnchor, constant: 6),
+            progressView.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            progressView.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+            progressView.heightAnchor.constraint(equalToConstant: 4),
+
+            trabajosLabel.topAnchor.constraint(equalTo: progressView.bottomAnchor, constant: 4),
+            trabajosLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            trabajosLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor),
+        ])
+
+        row.heightAnchor.constraint(equalToConstant: 60).isActive = true
+        return row
     }
 }
 
 // MARK: - UITableViewDataSource & Delegate
+
 extension HistorialViewController: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        historial.count
+        displayedTrabajos.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: HistorialCell.identifier, for: indexPath) as! HistorialCell
-        cell.configure(with: historial[indexPath.row])
+        let trabajo = displayedTrabajos[indexPath.row]
+        let isPro = AuthManager.shared.isProfessional
+
+        let titulo = trabajo.servicio?.nombreServicio ?? trabajo.descripcion
+        let precio = String(format: "$%.0f", trabajo.servicio?.precioReferencia ?? 0)
+        let fecha = trabajo.fechaSolicitud ?? ""
+        let contacto = isPro
+            ? "Cliente: \(trabajo.cliente?.nombre ?? "—")"
+            : (trabajo.profesional?.usuario?.nombre ?? "—")
+        let comentario: String? = isPro ? nil : "Toca para calificar"
+
+        cell.configure(titulo: titulo, contacto: contacto, precio: precio, fecha: fecha, estado: trabajo.estado, comentario: comentario)
         return cell
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        UITableView.automaticDimension
+    }
+
+    func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
         130
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        let detailVC = SolicitudDetailViewController(solicitud: historial[indexPath.row])
-        navigationController?.pushViewController(detailVC, animated: true)
+        guard !AuthManager.shared.isProfessional else { return }
+
+        let solicitud = displayedTrabajos[indexPath.row]
+        APIManager.shared.getResenaBySolicitud(solicitudId: solicitud.id) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                let vc: CalificarViewController
+                if case .success(let response) = result {
+                    vc = CalificarViewController(solicitud: solicitud, resena: response.resena)
+                } else {
+                    vc = CalificarViewController(solicitud: solicitud)
+                }
+                self.navigationController?.pushViewController(vc, animated: true)
+            }
+        }
     }
 }

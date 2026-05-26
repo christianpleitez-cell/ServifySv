@@ -10,9 +10,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: windowScene)
         window?.backgroundColor = .systemBackground
 
-        let loginVC = LoginViewController()
-        let navController = UINavigationController(rootViewController: loginVC)
-        window?.rootViewController = navController
+        // Check if user is already logged in
+        if AuthManager.shared.isLoggedIn {
+            let tabBar = MainTabBarController()
+            window?.rootViewController = tabBar
+        } else {
+            let loginVC = LoginViewController()
+            let navController = UINavigationController(rootViewController: loginVC)
+            window?.rootViewController = navController
+        }
+
         window?.makeKeyAndVisible()
     }
 }

@@ -3,9 +3,8 @@ import UIKit
 class SolicitudesViewController: UIViewController {
 
     // MARK: - Properties
-    private var solicitudes: [Solicitud] = MockData.solicitudes
+    private var solicitudes: [Solicitud] = []
     private var filteredSolicitudes: [Solicitud] = []
-    private var selectedFilter: EstadoSolicitud? = nil
 
     // MARK: - UI Components
     private let filterSegment: UISegmentedControl = {
@@ -43,7 +42,7 @@ class SolicitudesViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        applyFilter()
+        loadSolicitudes()
     }
 
     // MARK: - Setup
@@ -79,13 +78,55 @@ class SolicitudesViewController: UIViewController {
 
     private func applyFilter() {
         switch filterSegment.selectedSegmentIndex {
-        case 1: filteredSolicitudes = solicitudes.filter { $0.estado == .pendiente }
-        case 2: filteredSolicitudes = solicitudes.filter { $0.estado == .aceptada || $0.estado == .enProgreso }
-        case 3: filteredSolicitudes = solicitudes.filter { $0.estado == .completada }
+        case 1: filteredSolicitudes = solicitudes.filter { $0.estado == "pendiente" }
+        case 2: filteredSolicitudes = solicitudes.filter { $0.estado == "aceptada" }
+        case 3: filteredSolicitudes = solicitudes.filter { $0.estado == "completada" }
         default: filteredSolicitudes = solicitudes
         }
         emptyLabel.isHidden = !filteredSolicitudes.isEmpty
         tableView.reloadData()
+    }
+
+    private func loadSolicitudes() {
+        guard let currentUser = AuthManager.shared.currentUser else { return }
+
+        if AuthManager.shared.isProfessional {
+            guard let profesionalId = currentUser.id_profesional else {
+                print("[Solicitudes] id_profesional es nil para profesional")
+                return
+            }
+            APIManager.shared.getSolicitudesProfesional(profesionalId: profesionalId) { [weak self] result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let response):
+                        self?.solicitudes = response.solicitudes
+                        self?.applyFilter()
+                    case .failure(let error):
+                        print("[Solicitudes] Error profesional: \(error)")
+                        self?.solicitudes = []
+                        self?.applyFilter()
+                    }
+                }
+            }
+        } else {
+            guard let clienteId = currentUser.userId else {
+                print("[Solicitudes] userId es nil para cliente")
+                return
+            }
+            APIManager.shared.getSolicitudesCliente(clienteId: clienteId) { [weak self] result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let response):
+                        self?.solicitudes = response.solicitudes
+                        self?.applyFilter()
+                    case .failure(let error):
+                        print("[Solicitudes] Error cliente: \(error)")
+                        self?.solicitudes = []
+                        self?.applyFilter()
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Actions
@@ -108,7 +149,7 @@ extension SolicitudesViewController: UITableViewDataSource, UITableViewDelegate 
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        120
+        160
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {

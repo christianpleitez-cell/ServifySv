@@ -7,19 +7,36 @@ class ProfesionalCell: UITableViewCell {
     // MARK: - UI
     private let cardView: UIView = {
         let v = UIView()
-        v.backgroundColor = .systemBackground
-        v.layer.cornerRadius = 14
+        v.backgroundColor = .white
+        v.layer.cornerRadius = 16
         v.layer.shadowColor = UIColor.black.cgColor
-        v.layer.shadowOpacity = 0.07
+        v.layer.shadowOpacity = 0.1
         v.layer.shadowOffset = CGSize(width: 0, height: 2)
-        v.layer.shadowRadius = 6
+        v.layer.shadowRadius = 8
+        v.clipsToBounds = false
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+
+    private let categoryImageView: UIImageView = {
+        let iv = UIImageView()
+        iv.contentMode = .scaleAspectFill
+        iv.clipsToBounds = true
+        iv.layer.cornerRadius = 16
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        return iv
+    }()
+
+    private let infoView: UIView = {
+        let v = UIView()
+        v.backgroundColor = .white
         v.translatesAutoresizingMaskIntoConstraints = false
         return v
     }()
 
     private let avatarView: UIView = {
         let v = UIView()
-        v.layer.cornerRadius = 28
+        v.layer.cornerRadius = 20
         v.backgroundColor = .systemBlue.withAlphaComponent(0.15)
         v.translatesAutoresizingMaskIntoConstraints = false
         return v
@@ -27,7 +44,7 @@ class ProfesionalCell: UITableViewCell {
 
     private let avatarLabel: UILabel = {
         let l = UILabel()
-        l.font = UIFont.boldSystemFont(ofSize: 20)
+        l.font = UIFont.boldSystemFont(ofSize: 16)
         l.textColor = .systemBlue
         l.textAlignment = .center
         l.translatesAutoresizingMaskIntoConstraints = false
@@ -36,49 +53,49 @@ class ProfesionalCell: UITableViewCell {
 
     private let nombreLabel: UILabel = {
         let l = UILabel()
-        l.font = UIFont.boldSystemFont(ofSize: 16)
+        l.font = UIFont.boldSystemFont(ofSize: 14)
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
     private let especialidadLabel: UILabel = {
         let l = UILabel()
-        l.font = UIFont.systemFont(ofSize: 13)
-        l.textColor = .secondaryLabel
+        l.font = UIFont.systemFont(ofSize: 12)
+        l.textColor = .systemBlue
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
     private let ratingLabel: UILabel = {
         let l = UILabel()
-        l.font = UIFont.systemFont(ofSize: 13)
+        l.font = UIFont.systemFont(ofSize: 12, weight: .medium)
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
-    private let verificadoBadge: UILabel = {
+    private let tituloServicioLabel: UILabel = {
         let l = UILabel()
-        l.text = "✓ Verificado"
-        l.font = UIFont.systemFont(ofSize: 11, weight: .medium)
-        l.textColor = .systemGreen
+        l.font = UIFont.boldSystemFont(ofSize: 13)
+        l.numberOfLines = 2
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
+    private let descripcionLabel: UILabel = {
+        let l = UILabel()
+        l.font = UIFont.systemFont(ofSize: 11)
+        l.textColor = .secondaryLabel
+        l.numberOfLines = 2
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
     private let precioLabel: UILabel = {
         let l = UILabel()
-        l.font = UIFont.systemFont(ofSize: 13)
+        l.font = UIFont.boldSystemFont(ofSize: 14)
         l.textColor = .systemBlue
-        l.textAlignment = .right
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
-    }()
-
-    private let chevronImageView: UIImageView = {
-        let iv = UIImageView(image: UIImage(systemName: "chevron.right"))
-        iv.tintColor = .systemGray3
-        iv.translatesAutoresizingMaskIntoConstraints = false
-        return iv
     }()
 
     // MARK: - Init
@@ -93,64 +110,85 @@ class ProfesionalCell: UITableViewCell {
     private func setupUI() {
         backgroundColor = .clear
         selectionStyle = .none
+
         avatarView.addSubview(avatarLabel)
-        cardView.addSubview(avatarView)
-        cardView.addSubview(nombreLabel)
-        cardView.addSubview(especialidadLabel)
-        cardView.addSubview(ratingLabel)
-        cardView.addSubview(verificadoBadge)
-        cardView.addSubview(precioLabel)
-        cardView.addSubview(chevronImageView)
+        infoView.addSubview(avatarView)
+        infoView.addSubview(nombreLabel)
+        infoView.addSubview(especialidadLabel)
+        infoView.addSubview(ratingLabel)
+        infoView.addSubview(tituloServicioLabel)
+        infoView.addSubview(descripcionLabel)
+        infoView.addSubview(precioLabel)
+
+        cardView.addSubview(categoryImageView)
+        cardView.addSubview(infoView)
         contentView.addSubview(cardView)
 
         NSLayoutConstraint.activate([
-            cardView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 6),
+            cardView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
             cardView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             cardView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -6),
+            cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
 
-            avatarView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 14),
-            avatarView.centerYAnchor.constraint(equalTo: cardView.centerYAnchor),
-            avatarView.widthAnchor.constraint(equalToConstant: 56),
-            avatarView.heightAnchor.constraint(equalToConstant: 56),
+            categoryImageView.topAnchor.constraint(equalTo: cardView.topAnchor),
+            categoryImageView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
+            categoryImageView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
+            categoryImageView.heightAnchor.constraint(equalToConstant: 120),
+
+            infoView.topAnchor.constraint(equalTo: categoryImageView.bottomAnchor),
+            infoView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
+            infoView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
+            infoView.bottomAnchor.constraint(equalTo: cardView.bottomAnchor),
+
+            avatarView.topAnchor.constraint(equalTo: infoView.topAnchor, constant: -12),
+            avatarView.leadingAnchor.constraint(equalTo: infoView.leadingAnchor, constant: 12),
+            avatarView.widthAnchor.constraint(equalToConstant: 40),
+            avatarView.heightAnchor.constraint(equalToConstant: 40),
 
             avatarLabel.centerXAnchor.constraint(equalTo: avatarView.centerXAnchor),
             avatarLabel.centerYAnchor.constraint(equalTo: avatarView.centerYAnchor),
 
-            nombreLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 18),
-            nombreLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 12),
-            nombreLabel.trailingAnchor.constraint(equalTo: chevronImageView.leadingAnchor, constant: -8),
+            nombreLabel.topAnchor.constraint(equalTo: infoView.topAnchor, constant: 8),
+            nombreLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 10),
+            nombreLabel.trailingAnchor.constraint(equalTo: infoView.trailingAnchor, constant: -12),
 
-            especialidadLabel.topAnchor.constraint(equalTo: nombreLabel.bottomAnchor, constant: 3),
-            especialidadLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 12),
+            especialidadLabel.topAnchor.constraint(equalTo: nombreLabel.bottomAnchor, constant: 2),
+            especialidadLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 10),
 
-            ratingLabel.topAnchor.constraint(equalTo: especialidadLabel.bottomAnchor, constant: 6),
-            ratingLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 12),
+            ratingLabel.topAnchor.constraint(equalTo: nombreLabel.bottomAnchor, constant: 2),
+            ratingLabel.trailingAnchor.constraint(equalTo: infoView.trailingAnchor, constant: -12),
 
-            verificadoBadge.topAnchor.constraint(equalTo: ratingLabel.bottomAnchor, constant: 4),
-            verificadoBadge.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 12),
+            tituloServicioLabel.topAnchor.constraint(equalTo: especialidadLabel.bottomAnchor, constant: 6),
+            tituloServicioLabel.leadingAnchor.constraint(equalTo: infoView.leadingAnchor, constant: 12),
+            tituloServicioLabel.trailingAnchor.constraint(equalTo: infoView.trailingAnchor, constant: -12),
 
-            precioLabel.trailingAnchor.constraint(equalTo: chevronImageView.leadingAnchor, constant: -8),
-            precioLabel.centerYAnchor.constraint(equalTo: cardView.centerYAnchor),
+            descripcionLabel.topAnchor.constraint(equalTo: tituloServicioLabel.bottomAnchor, constant: 4),
+            descripcionLabel.leadingAnchor.constraint(equalTo: infoView.leadingAnchor, constant: 12),
+            descripcionLabel.trailingAnchor.constraint(equalTo: infoView.trailingAnchor, constant: -12),
 
-            chevronImageView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -14),
-            chevronImageView.centerYAnchor.constraint(equalTo: cardView.centerYAnchor),
-            chevronImageView.widthAnchor.constraint(equalToConstant: 12),
-            chevronImageView.heightAnchor.constraint(equalToConstant: 18),
+            precioLabel.topAnchor.constraint(equalTo: descripcionLabel.bottomAnchor, constant: 6),
+            precioLabel.leadingAnchor.constraint(equalTo: infoView.leadingAnchor, constant: 12),
+            precioLabel.bottomAnchor.constraint(equalTo: infoView.bottomAnchor, constant: -10),
         ])
     }
 
     // MARK: - Configure
     func configure(with profesional: Profesional) {
-        let initials = profesional.usuario.nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
+        let nombre = profesional.usuario?.nombre ?? ""
+        let initials = nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
         avatarLabel.text = String(initials.prefix(2))
-        nombreLabel.text = profesional.usuario.nombre
+        nombreLabel.text = nombre
         especialidadLabel.text = profesional.especialidad
-        ratingLabel.text = "★ \(profesional.calificacionPromedio) (\(profesional.totalCalificaciones))"
-        verificadoBadge.isHidden = profesional.estadoVerificacion != "Verificado"
+        let rating = profesional.calificacionPromedio ?? 0.0
+        let total = profesional.totalCalificaciones ?? 0
+        ratingLabel.text = "⭐ \(String(format: "%.1f", rating)) (\(total))"
 
-        if let precio = profesional.servicios.first?.precioReferencia {
-            precioLabel.text = "Desde $\(String(format: "%.0f", precio))"
+        if let servicio = profesional.servicios?.first {
+            tituloServicioLabel.text = servicio.nombreServicio
+            descripcionLabel.text = servicio.descripcion ?? ""
+            categoryImageView.image = nil
+            categoryImageView.backgroundColor = UIColor(red: 0.72, green: 0.88, blue: 0.98, alpha: 1)
+            precioLabel.text = "$\(String(format: "%.0f", servicio.precioReferencia))/día"
         }
     }
 }

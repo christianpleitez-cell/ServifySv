@@ -14,7 +14,7 @@ class ServicioCardView: UIView {
         nombreLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let categoriaLabel = UILabel()
-        categoriaLabel.text = servicio.categoria.rawValue
+        categoriaLabel.text = servicio.categoria
         categoriaLabel.font = UIFont.systemFont(ofSize: 12)
         categoriaLabel.textColor = .secondaryLabel
         categoriaLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -26,7 +26,7 @@ class ServicioCardView: UIView {
         precioLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let disponibilidadLabel = UILabel()
-        disponibilidadLabel.text = servicio.disponibilidad
+        disponibilidadLabel.text = servicio.disponibilidad ? "Disponible" : "No disponible"
         disponibilidadLabel.font = UIFont.systemFont(ofSize: 12)
         disponibilidadLabel.textColor = .systemGray
         disponibilidadLabel.translatesAutoresizingMaskIntoConstraints = false

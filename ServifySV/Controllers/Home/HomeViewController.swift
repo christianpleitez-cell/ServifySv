@@ -3,8 +3,10 @@ import UIKit
 class HomeViewController: UIViewController {
 
     // MARK: - Properties
-    private var profesionales: [Profesional] = MockData.profesionales
+    private var profesionales: [Profesional] = []
+    private var profesionalesFiltrados: [Profesional] = []
     private var categoriaSeleccionada: CategoriaServicio? = nil
+    private var searchText: String = ""
 
     // MARK: - UI Components
     private let searchBar: UISearchBar = {
@@ -45,27 +47,80 @@ class HomeViewController: UIViewController {
         setupCollectionView()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadProfesionales()
+    }
+
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .systemBackground
-        title = "ServifySV"
-        navigationController?.navigationBar.prefersLargeTitles = true
+        view.backgroundColor = UIColor(white: 0.97, alpha: 1)
+        navigationController?.isNavigationBarHidden = true
+
+        let headerView = UIView()
+        headerView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(headerView)
+
+        let holaLabel = UILabel()
+        let userName = AuthManager.shared.currentUser?.nombre ?? "Usuario"
+        holaLabel.text = "Hola, \(userName)"
+        holaLabel.font = UIFont.boldSystemFont(ofSize: 24)
+        holaLabel.textColor = .black
+        holaLabel.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(holaLabel)
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = "Encuentra tu profesional"
+        subtitleLabel.font = UIFont.systemFont(ofSize: 13)
+        subtitleLabel.textColor = .systemGray
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(subtitleLabel)
+
+        let initials = userName.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
+        let avatarButton = UIButton(type: .system)
+        avatarButton.backgroundColor = .systemBlue
+        avatarButton.setTitle(String(initials.prefix(2)).uppercased(), for: .normal)
+        avatarButton.setTitleColor(.white, for: .normal)
+        avatarButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
+        avatarButton.layer.cornerRadius = 20
+        avatarButton.layer.borderWidth = 2
+        avatarButton.layer.borderColor = UIColor.white.withAlphaComponent(0.4).cgColor
+        avatarButton.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(avatarButton)
+
+        NSLayoutConstraint.activate([
+            holaLabel.topAnchor.constraint(equalTo: headerView.topAnchor),
+            holaLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+
+            subtitleLabel.topAnchor.constraint(equalTo: holaLabel.bottomAnchor, constant: 4),
+            subtitleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            subtitleLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8),
+
+            avatarButton.centerYAnchor.constraint(equalTo: holaLabel.centerYAnchor),
+            avatarButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            avatarButton.widthAnchor.constraint(equalToConstant: 40),
+            avatarButton.heightAnchor.constraint(equalToConstant: 40),
+        ])
 
         view.addSubview(searchBar)
         view.addSubview(categoryCollectionView)
         view.addSubview(tableView)
 
         NSLayoutConstraint.activate([
-            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
 
-            categoryCollectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 4),
+            searchBar.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 16),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+
+            categoryCollectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 12),
             categoryCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             categoryCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             categoryCollectionView.heightAnchor.constraint(equalToConstant: 50),
 
-            tableView.topAnchor.constraint(equalTo: categoryCollectionView.bottomAnchor, constant: 8),
+            tableView.topAnchor.constraint(equalTo: categoryCollectionView.bottomAnchor, constant: 12),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -76,6 +131,7 @@ class HomeViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(ProfesionalCell.self, forCellReuseIdentifier: ProfesionalCell.identifier)
+        searchBar.delegate = self
     }
 
     private func setupCollectionView() {
@@ -83,28 +139,84 @@ class HomeViewController: UIViewController {
         categoryCollectionView.dataSource = self
         categoryCollectionView.register(CategoryCell.self, forCellWithReuseIdentifier: CategoryCell.identifier)
     }
+
+    private func loadProfesionales() {
+        if let categoria = categoriaSeleccionada {
+            APIManager.shared.getProfesionalesByCategoria(categoria: categoria.rawValue) { [weak self] result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let response):
+                        self?.profesionales = response.profesionales
+                        self?.applySearch()
+                    case .failure:
+                        self?.profesionales = []
+                        self?.applySearch()
+                    }
+                }
+            }
+        } else {
+            APIManager.shared.getProfesionales { [weak self] result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let response):
+                        self?.profesionales = response.profesionales
+                        self?.applySearch()
+                    case .failure:
+                        self?.profesionales = []
+                        self?.applySearch()
+                    }
+                }
+            }
+        }
+    }
+
+    private func applySearch() {
+        let base: [Profesional]
+        if searchText.isEmpty {
+            base = profesionales
+        } else {
+            let q = searchText.lowercased()
+            base = profesionales.filter { p in
+                let nombre = p.usuario?.nombre.lowercased() ?? ""
+                let especialidad = p.especialidad?.lowercased() ?? ""
+                let servicios = p.servicios?.map { $0.nombreServicio.lowercased() }.joined(separator: " ") ?? ""
+                return nombre.contains(q) || especialidad.contains(q) || servicios.contains(q)
+            }
+        }
+
+        // Una entry por servicio: si un profesional tiene 3 servicios → 3 cards
+        profesionalesFiltrados = base.flatMap { prof -> [Profesional] in
+            guard let servicios = prof.servicios, !servicios.isEmpty else { return [prof] }
+            return servicios.map { servicio in
+                var copia = prof
+                copia.servicios = [servicio]
+                return copia
+            }
+        }
+        tableView.reloadData()
+    }
 }
 
 // MARK: - UITableViewDataSource & Delegate
 extension HomeViewController: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        profesionales.count
+        profesionalesFiltrados.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: ProfesionalCell.identifier, for: indexPath) as! ProfesionalCell
-        cell.configure(with: profesionales[indexPath.row])
+        cell.configure(with: profesionalesFiltrados[indexPath.row])
         return cell
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        130
+        280
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        let detailVC = ProfesionalDetailViewController(profesional: profesionales[indexPath.row])
+        let detailVC = ProfesionalDetailViewController(profesional: profesionalesFiltrados[indexPath.row])
         navigationController?.pushViewController(detailVC, animated: true)
     }
 }
@@ -130,15 +242,29 @@ extension HomeViewController: UICollectionViewDataSource, UICollectionViewDelega
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         if indexPath.item == 0 {
             categoriaSeleccionada = nil
-            profesionales = MockData.profesionales
         } else {
-            let cat = CategoriaServicio.allCases[indexPath.item - 1]
-            categoriaSeleccionada = cat
-            profesionales = MockData.profesionales.filter { prof in
-                prof.servicios.contains { $0.categoria == cat }
-            }
+            categoriaSeleccionada = CategoriaServicio.allCases[indexPath.item - 1]
         }
-        tableView.reloadData()
         collectionView.reloadData()
+        loadProfesionales()
+    }
+}
+
+// MARK: - UISearchBarDelegate
+extension HomeViewController: UISearchBarDelegate {
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        self.searchText = searchText
+        applySearch()
+    }
+
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
+    }
+
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.text = ""
+        searchText = ""
+        applySearch()
+        searchBar.resignFirstResponder()
     }
 }

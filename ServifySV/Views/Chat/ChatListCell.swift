@@ -77,16 +77,11 @@ class ChatListCell: UITableViewCell {
     required init?(coder: NSCoder) { fatalError() }
 
     func configure(with chat: Chat) {
-        let nombre = chat.solicitud.profesional.usuario.nombre
+        let nombre = chat.solicitud?.profesional?.usuario?.nombre ?? ""
         let initials = nombre.split(separator: " ").compactMap { $0.first }.map { String($0) }.joined()
         avatarLabel.text = String(initials.prefix(2))
         nombreLabel.text = nombre
-        ultimoMensajeLabel.text = chat.mensajes.last?.contenido ?? "Sin mensajes"
-
-        if let fecha = chat.mensajes.last?.fechaEnvio {
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            horaLabel.text = formatter.string(from: fecha)
-        }
+        ultimoMensajeLabel.text = chat.mensajes?.last?.contenido ?? "Sin mensajes"
+        horaLabel.text = chat.mensajes?.last?.fechaEnvio ?? ""
     }
 }

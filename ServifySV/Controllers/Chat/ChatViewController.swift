@@ -4,6 +4,7 @@ class ChatViewController: UIViewController {
 
     // MARK: - Properties
     private var chat: Chat
+    private var mensajes: [Mensaje] = []
 
     // MARK: - UI Components
     private let tableView: UITableView = {
@@ -56,7 +57,12 @@ class ChatViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         setupKeyboardObservers()
-        scrollToBottom()
+        loadMensajes()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadMensajes()
     }
 
     deinit {
@@ -66,7 +72,7 @@ class ChatViewController: UIViewController {
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .systemBackground
-        title = chat.solicitud.profesional.usuario.nombre
+        title = chat.solicitud?.profesional?.usuario?.nombre ?? "Chat"
 
         messageContainerView.addSubview(messageTextField)
         messageContainerView.addSubview(sendButton)
@@ -110,26 +116,60 @@ class ChatViewController: UIViewController {
     }
 
     private func scrollToBottom() {
-        guard !chat.mensajes.isEmpty else { return }
-        let indexPath = IndexPath(row: chat.mensajes.count - 1, section: 0)
+        guard !mensajes.isEmpty else { return }
+        let indexPath = IndexPath(row: mensajes.count - 1, section: 0)
         tableView.scrollToRow(at: indexPath, at: .bottom, animated: false)
+    }
+
+    private func loadMensajes() {
+        guard let solicitudId = chat.solicitud?.id else { return }
+        APIManager.shared.getMensajes(solicitudId: solicitudId) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    self?.mensajes = response.mensajes
+                    self?.tableView.reloadData()
+                    self?.scrollToBottom()
+                case .failure:
+                    self?.mensajes = []
+                    self?.tableView.reloadData()
+                }
+            }
+        }
     }
 
     // MARK: - Actions
     @objc private func sendTapped() {
         guard let text = messageTextField.text, !text.isEmpty else { return }
-        let nuevoMensaje = Mensaje(
-            id: chat.mensajes.count + 1,
-            idChat: chat.id,
-            remitente: MockData.usuarioActual,
-            contenido: text,
-            fechaEnvio: Date(),
-            esPropio: true
-        )
-        chat.mensajes.append(nuevoMensaje)
-        messageTextField.text = ""
-        tableView.reloadData()
-        scrollToBottom()
+        guard let remitenteId = AuthManager.shared.currentUser?.id_profesional else { return }
+
+        sendButton.isEnabled = false
+
+        guard let solicitudId = chat.solicitud?.id else { return }
+        APIManager.shared.sendMensaje(
+            solicitudId: solicitudId,
+            remitenteId: remitenteId,
+            contenido: text
+        ) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.sendButton.isEnabled = true
+
+                switch result {
+                case .success:
+                    self?.messageTextField.text = ""
+                    self?.loadMensajes()
+
+                case .failure(let error):
+                    self?.showAlert(title: "Error", message: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 
     @objc private func keyboardWillShow(_ notification: Notification) {
@@ -149,11 +189,11 @@ class ChatViewController: UIViewController {
 extension ChatViewController: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        chat.mensajes.count
+        mensajes.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let mensaje = chat.mensajes[indexPath.row]
+        let mensaje = mensajes[indexPath.row]
         if mensaje.esPropio {
             let cell = tableView.dequeueReusableCell(withIdentifier: MensajeCell.identifier, for: indexPath) as! MensajeCell
             cell.configure(with: mensaje)
@@ -171,65 +211,5 @@ extension ChatViewController: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         UITableView.automaticDimension
-    }
-}
-
-
-// MARK: - ChatsListViewController
-class ChatsListViewController: UIViewController {
-
-    private var chats: [Chat] = MockData.chats
-
-    private let tableView: UITableView = {
-        let tv = UITableView()
-        tv.separatorStyle = .singleLine
-        tv.translatesAutoresizingMaskIntoConstraints = false
-        return tv
-    }()
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        setupUI()
-    }
-
-    private func setupUI() {
-        view.backgroundColor = .systemBackground
-        title = "Mensajes"
-        navigationController?.navigationBar.prefersLargeTitles = true
-
-        view.addSubview(tableView)
-        NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-        ])
-
-        tableView.delegate = self
-        tableView.dataSource = self
-        tableView.register(ChatListCell.self, forCellReuseIdentifier: ChatListCell.identifier)
-    }
-}
-
-extension ChatsListViewController: UITableViewDataSource, UITableViewDelegate {
-
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        chats.count
-    }
-
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: ChatListCell.identifier, for: indexPath) as! ChatListCell
-        cell.configure(with: chats[indexPath.row])
-        return cell
-    }
-
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        70
-    }
-
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        let chatVC = ChatViewController(chat: chats[indexPath.row])
-        navigationController?.pushViewController(chatVC, animated: true)
     }
 }
